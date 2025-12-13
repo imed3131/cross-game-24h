@@ -24,10 +24,12 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // CORS configuration
+const corsOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',')
+  : ['http://localhost:3000', 'http://localhost:5173'];
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourdomain.com'] // Replace with your production domain
-    : ['http://localhost:3000', 'http://localhost:5173'], // Development origins
+  origin: corsOrigins,
   credentials: true
 }));
 

@@ -30,8 +30,8 @@ export const useCrosswordGame = () => {
       setInvalidInput(true);
       toast.error(
         state.language === 'FR' 
-          ? 'Only French letters are allowed'
-          : 'Only Arabic letters are allowed'
+          ? 'Seules les lettres françaises sont autorisées'
+          : 'فقط الأحرف العربية مسموحة'
       );
       setTimeout(() => setInvalidInput(false), 500);
       return false;

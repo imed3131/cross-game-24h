@@ -6,8 +6,11 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
+    "build": "prisma generate && prisma db push",
+    "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
     "db:seed": "node prisma/seed.js",
     "db:reset": "prisma db push --force-reset && npm run db:seed"
   },
@@ -33,5 +36,8 @@
     "prisma"
   ],
   "author": "Crossword Game Team",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
