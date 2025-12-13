@@ -105,17 +105,17 @@ const CluesPanel = ({
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className={`bg-white rounded-2xl shadow-lg p-6 ${className}`}
+      className={`bg-white rounded-xl lg:rounded-2xl shadow-lg p-3 sm:p-4 lg:p-6 ${className}`}
     >
-      <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
+      <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 lg:mb-6 text-center">
         Indices
       </h2>
       
-      <div className="space-y-6 overflow-hidden">
+      <div className="space-y-3 sm:space-y-4 lg:space-y-6 overflow-hidden">
         {/* Horizontal Clues */}
         <div className="min-h-0">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <ArrowRight className="w-5 h-5 mr-2 text-blue-600" />
+          <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2 sm:mb-3 lg:mb-4 flex items-center">
+            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-blue-600" />
             <span className="text-blue-600">Horizontal</span>
           </h3>
           
@@ -130,12 +130,12 @@ const CluesPanel = ({
         
         {/* Vertical Clues */}
         <div className="min-h-0">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <ArrowDown className="w-5 h-5 mr-2 text-green-600" />
+          <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2 sm:mb-3 lg:mb-4 flex items-center">
+            <ArrowDown className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 text-green-600" />
             <span className="text-green-600">Vertical</span>
           </h3>
           
-          <div className="space-y-2 max-h-64 overflow-y-auto overflow-x-hidden scrollbar-thin">
+          <div className="space-y-1.5 sm:space-y-2 max-h-48 sm:max-h-56 lg:max-h-64 overflow-y-auto overflow-x-hidden scrollbar-thin">
             <AnimatePresence>
               {puzzle.cluesVertical && Object.entries(puzzle.cluesVertical).map(([number, clueText]) => 
                 renderClue({ number: parseInt(number), clue: clueText }, 'vertical')

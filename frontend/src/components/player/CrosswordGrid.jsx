@@ -218,15 +218,15 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, className = '' }) =
   return (
     <motion.div
       ref={gridRef}
-      className={`p-4 bg-white rounded-2xl shadow-lg ${className}`}
+      className={`p-2 sm:p-3 lg:p-4 bg-white rounded-xl lg:rounded-2xl shadow-lg ${className}`}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
     >
       {/* Display puzzle info */}
       <div className="mb-4">
-        <h3 className="text-lg font-bold text-center mb-2">{puzzle.title}</h3>
-        <div className="text-sm text-gray-600 text-center">
+        <h3 className="text-base sm:text-lg font-bold text-center mb-1 sm:mb-2">{puzzle.title}</h3>
+        <div className="text-xs sm:text-sm text-gray-600 text-center">
           <span>Grille {puzzle.rows} × {puzzle.cols}</span>
           <span className="ml-4">Difficulté: {puzzle.difficulty === 'easy' ? 'Facile' : puzzle.difficulty === 'medium' ? 'Moyen' : 'Difficile'}</span>
         </div>
@@ -236,7 +236,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, className = '' }) =
       <div className="flex justify-center mb-4">
         {/* Crossword grid */}
         <div 
-          className="grid gap-0.5"
+          className="grid gap-0.5 sm:gap-1"
           style={{ 
             gridTemplateColumns: `repeat(${puzzle.cols || gridSize}, minmax(0, 1fr))`
           }}
@@ -260,8 +260,8 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, className = '' }) =
                       }
                     }}
                     className={`
-                      relative w-14 h-14 border-2 cursor-pointer font-bold text-xl
-                      flex items-center justify-center transition-all duration-200 rounded-md
+                      relative w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 border-2 cursor-pointer font-bold text-sm sm:text-base md:text-lg lg:text-xl
+                      flex items-center justify-center transition-all duration-200 rounded-sm sm:rounded-md
                       ${isBlackCell 
                         ? 'bg-black border-black' 
                         : `bg-white border-gray-400 hover:border-primary-400 shadow-sm

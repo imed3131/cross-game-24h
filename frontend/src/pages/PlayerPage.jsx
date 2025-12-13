@@ -193,24 +193,24 @@ const PlayerPage = () => {
       </div>
 
       <div className="relative z-10 min-h-screen">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 lg:py-8">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12"
+            className="text-center mb-6 sm:mb-8 lg:mb-12"
           >
             {/* Sparkle animation */}
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="flex justify-center mb-6"
+              className="flex justify-center mb-3 sm:mb-4 lg:mb-6"
             >
-              <Sparkles className="w-8 h-8 text-yellow-400" />
+              <Sparkles className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-yellow-400" />
             </motion.div>
             
             <motion.h1 
-              className="text-5xl md:text-7xl font-bold mb-6 relative"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-7xl font-bold mb-3 sm:mb-4 lg:mb-6 relative px-2"
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.8, ease: "backOut" }}
@@ -245,27 +245,28 @@ const PlayerPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.2 }}
-            className="flex flex-wrap items-center justify-between mb-12 gap-6"
+            className="flex flex-col sm:flex-row flex-wrap items-center justify-between mb-6 sm:mb-8 lg:mb-12 gap-3 sm:gap-4 lg:gap-6"
           >
             {/* Left Controls */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center justify-center sm:justify-start w-full sm:w-auto">
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 shadow-xl"
+                className="backdrop-blur-lg bg-white/10 rounded-xl lg:rounded-2xl border border-white/20 shadow-xl"
               >
                 <Button
-                  className="bg-transparent text-white border-none hover:bg-white/20 px-6 py-3"
-                  icon={<CalendarIcon className="w-5 h-5 mr-2" />}
+                  className="bg-transparent text-white border-none hover:bg-white/20 px-3 py-2 sm:px-4 sm:py-2.5 lg:px-6 lg:py-3 text-sm sm:text-base"
+                  icon={<CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />}
                   onClick={() => setShowCalendar(!showCalendar)}
                 >
-                   Calendrier des parties
+                  <span className="hidden sm:inline">Calendrier des parties</span>
+                  <span className="sm:hidden">Calendrier</span>
                 </Button>
               </motion.div>
             </div>
 
             {/* Right Controls - Game Stats */}
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center justify-center flex-wrap gap-2 sm:gap-3 lg:gap-6 w-full sm:w-auto">
               {todaysPuzzles.length > 0 && currentPuzzle && currentPuzzle.language && (
                 <>
                   {/* Language indicator */}
@@ -273,12 +274,12 @@ const PlayerPage = () => {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 1.2, type: "spring" }}
-                    className="backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 p-4 shadow-xl"
+                    className="backdrop-blur-lg bg-white/10 rounded-xl lg:rounded-2xl border border-white/20 p-2 sm:p-3 lg:p-4 shadow-xl"
                   >
-                    <div className="flex items-center space-x-3">
-                      <BookOpen className="w-5 h-5 text-green-400" />
+                    <div className="flex items-center space-x-1.5 sm:space-x-2 lg:space-x-3">
+                      <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
                       <div className="text-white">
-                        <div className="text-sm font-semibold">
+                        <div className="text-xs sm:text-sm font-semibold">
                           {language === 'FR' ? 'Français' : 'العربية'}
                         </div>
                       </div>
@@ -292,8 +293,8 @@ const PlayerPage = () => {
                     transition={{ type: "spring", stiffness: 300 }}
                   >
                     <Button
-                      className="bg-white/10 backdrop-blur-lg text-white border border-white/20 hover:bg-white/20 p-3 rounded-2xl shadow-xl"
-                      icon={<RefreshCw className="w-5 h-5" />}
+                      className="bg-white/10 backdrop-blur-lg text-white border border-white/20 hover:bg-white/20 p-2 sm:p-2.5 lg:p-3 rounded-xl lg:rounded-2xl shadow-xl"
+                      icon={<RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />}
                       onClick={resetGame}
                     >
                     </Button>
@@ -333,22 +334,22 @@ const PlayerPage = () => {
               transition={{ delay: 1.8, duration: 0.8 }}
             >
               {/* Game Header */}
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-6 lg:mb-8 gap-3 sm:gap-0">
                 <motion.div
-                  className="flex items-center space-x-4"
+                  className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4"
                   initial={{ x: -30, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 2 }}
                 >
-                  <BookOpen className="w-8 h-8 text-yellow-400" />
-                  <h2 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 to-pink-400 bg-clip-text text-transparent">
+                  <BookOpen className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-yellow-400" />
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-yellow-400 to-pink-400 bg-clip-text text-transparent">
                     Jeu du Jour
                   </h2>
                 </motion.div>
                 
                 {todaysPuzzles.length > 1 && (
                   <motion.div
-                    className="flex items-center space-x-4 backdrop-blur-lg bg-white/10 rounded-2xl border border-white/20 p-3 shadow-xl"
+                    className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4 backdrop-blur-lg bg-white/10 rounded-xl lg:rounded-2xl border border-white/20 p-2 sm:p-2.5 lg:p-3 shadow-xl"
                     initial={{ x: 30, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: 2.2 }}
@@ -357,12 +358,12 @@ const PlayerPage = () => {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => navigatePuzzle('prev')}
-                      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+                      className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
                     >
-                      <ChevronLeft className="w-5 h-5" />
+                      <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                     </motion.button>
                     
-                    <span className="text-white font-semibold px-4">
+                    <span className="text-white font-semibold px-2 sm:px-3 lg:px-4 text-sm sm:text-base">
                       {currentPuzzleIndex + 1} / {todaysPuzzles.length}
                     </span>
                     
@@ -370,25 +371,25 @@ const PlayerPage = () => {
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => navigatePuzzle('next')}
-                      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+                      className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
                     >
-                      <ChevronRight className="w-5 h-5" />
+                      <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                     </motion.button>
                   </motion.div>
                 )}
               </div>
 
               {/* Main Game Layout */}
-              <div className="grid lg:grid-cols-3 gap-8">
+              <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 lg:gap-8">
                 {/* Crossword Grid Container */}
                 <motion.div
                   initial={{ opacity: 0, x: -50 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 2.4, duration: 0.8 }}
-                  className="lg:col-span-2"
+                  className="lg:col-span-2 order-1 lg:order-1"
                 >
                   {/* Grid Card */}
-                  <div className="backdrop-blur-lg bg-white/10 rounded-3xl border border-white/20 p-8 shadow-2xl">
+                  <div className="backdrop-blur-lg bg-white/10 rounded-2xl lg:rounded-3xl border border-white/20 p-3 sm:p-6 lg:p-8 shadow-2xl">
                     <CrosswordGrid
                       puzzle={currentPuzzle}
                       onCellSelect={() => {}}
@@ -402,7 +403,7 @@ const PlayerPage = () => {
                   initial={{ opacity: 0, x: 50 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 2.6, duration: 0.8 }}
-                  className="backdrop-blur-lg bg-white/10 rounded-3xl border border-white/20 p-6 shadow-2xl"
+                  className="backdrop-blur-lg bg-white/10 rounded-2xl lg:rounded-3xl border border-white/20 p-3 sm:p-4 lg:p-6 shadow-2xl order-2 lg:order-2"
                 >
                   <CluesPanel
                     puzzle={currentPuzzle}
