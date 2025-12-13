@@ -48,7 +48,7 @@ const PlayerPage = () => {
     if (selectedPuzzle) {
       initializePuzzle(selectedPuzzle);
     }
-  }, [selectedPuzzle, initializePuzzle]);
+  }, [selectedPuzzle?.id]); // Only depend on puzzle id to prevent excessive re-renders
 
   // Show celebration when puzzle is completed
   useEffect(() => {
