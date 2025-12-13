@@ -1,0 +1,51 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  @@map("users")
+}
+
+model CrosswordPuzzle {
+  id               Int      @id @default(autoincrement())
+  title            String   @default("Puzzle du jour")
+  date             DateTime
+  language         String   // "FR" or "AR"
+  difficulty       String   @default("medium") // "easy", "medium", "hard"
+  rows             Int      // Grid height
+  cols             Int      // Grid width
+  grid             String   // JSON string of 2D array with letters and black cells (#)
+  cluesHorizontal  String   // JSON string of {number: definition}
+  cluesVertical    String   // JSON string of {number: definition}
+  solution         String   // JSON string of the complete solution
+  numbering        String   // JSON string of numbering grid
+  isPublished      Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("crossword_puzzles")
+}
+
+model PlayerStats {
+  id               Int      @id @default(autoincrement())
+  date             DateTime
+  puzzlesCompleted Int      @default(0)
+  language         String   // "FR" or "AR"
+  totalTimeSpent   Int      @default(0) // in seconds
+  createdAt        DateTime @default(now())
+
+  @@map("player_stats")
+}
