@@ -27,9 +27,13 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
   const [hoveredCell, setHoveredCell] = useState({ row: -1, col: -1 });
   const [currentTime, setCurrentTime] = useState(0);
   const [localHighlightedCells, setLocalHighlightedCells] = useState([]);
-  // Handle keyboard events
+  // Handle keyboard events - DESKTOP ONLY (mobile uses hidden input field)
   useEffect(() => {
     const handleDocumentKeyDown = (e) => {
+      // Skip if mobile device to prevent duplicate input processing
+      const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+      if (isMobile) return;
+      
       if (selectedCell.row !== -1 && selectedCell.col !== -1) {
         handleKeyInput(e.key);
       }
@@ -37,7 +41,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
 
     document.addEventListener('keydown', handleDocumentKeyDown);
     return () => document.removeEventListener('keydown', handleDocumentKeyDown);
-  }, [selectedCell.row, selectedCell.col, handleKeyInput]); // Fixed: Added handleKeyInput dependency
+  }, [selectedCell.row, selectedCell.col, handleKeyInput]);
 
   // Auto-focus grid when cell is selected
   useEffect(() => {
@@ -252,7 +256,16 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
     >
-      {/* Hidden input for mobile keyboard - positioned off-screen */}
+      {/* 
+        Hidden input for mobile keyboard - positioned off-screen
+        
+        INPUT HANDLING STRATEGY:
+        - MOBILE: Uses this hidden input field with onInput event only
+        - DESKTOP: Uses global document keydown listener only  
+        - This prevents duplicate processing of the same keystroke
+        - Mobile keyboards can fire multiple events (keydown + input) for one keystroke
+        - By separating mobile/desktop handling, each character is processed exactly once
+      */}
       <input
         ref={mobileInputRef}
         type="text"
@@ -262,13 +275,8 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
         autoCapitalize="off"
         spellCheck="false"
         inputMode="text"
-        onKeyDown={(e) => {
-          if (selectedCell.row !== -1 && selectedCell.col !== -1) {
-            e.preventDefault();
-            handleKeyInput(e.key);
-          }
-        }}
         onInput={(e) => {
+          // MOBILE INPUT ONLY - Desktop uses global keyboard listener
           e.preventDefault();
           e.stopPropagation();
           
@@ -284,6 +292,11 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
           
           // Always clear input immediately
           e.target.value = '';
+        }}
+        onKeyDown={(e) => {
+          // Prevent mobile keyboard events from bubbling to document listener
+          e.preventDefault();
+          e.stopPropagation();
         }}
         onFocus={() => {
           // Clear on focus to prevent old values
