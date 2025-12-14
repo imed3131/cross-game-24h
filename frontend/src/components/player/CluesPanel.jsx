@@ -24,40 +24,12 @@ const CluesPanel = ({
       return;
     }
 
-    // Build a proper word object with start positions and length
-    // Clues are stored as number => text in puzzle; but puzzle should also include clue metadata when available
-    const number = clue.number || clue;
-
-    // Default conservative values
-    let startRow = 0;
-    let startCol = 0;
-    let length = direction === 'horizontal' ? (puzzle.cols || puzzle?.solution?.[0]?.length || 15) : (puzzle.rows || puzzle?.solution?.length || 15);
-
-    // If the puzzle includes structured clues with positions, use them
-    if (puzzle.cluesMeta) {
-      const metaList = puzzle.cluesMeta[direction] || [];
-      const found = metaList.find(c => c.number === number);
-      if (found) {
-        startRow = found.startRow ?? startRow;
-        startCol = found.startCol ?? startCol;
-        length = found.length ?? length;
-      } else {
-        // Fallback: map number to row/col by simple heuristics
-        if (direction === 'horizontal') startRow = number - 1;
-        if (direction === 'vertical') startCol = number - 1;
-      }
-    } else {
-      // Fallback heuristics
-      if (direction === 'horizontal') startRow = number - 1;
-      if (direction === 'vertical') startCol = number - 1;
-    }
+    // Simple approach: clue number directly corresponds to row/column
+    const number = clue.number || parseInt(clue);
 
     const word = {
       number,
       clue: clue.clue || clue,
-      startRow,
-      startCol,
-      length,
       direction
     };
 

@@ -54,30 +54,27 @@ export const getWordPositions = (clue, grid) => {
     return positions;
   }
   
-  const { startRow, startCol, length, direction, number } = clue;
+  const { direction, number } = clue;
+  const gridRows = grid.length;
+  const gridCols = grid[0]?.length || 0;
   
-  // For our simplified clue system where clues represent entire rows/columns
   if (direction === 'horizontal') {
-    // Highlight entire row (or specified length from startCol)
-    const targetRow = startRow;
-    const gridCols = grid[0]?.length || 0;
-    const actualLength = length || gridCols;
-    const actualStartCol = startCol || 0;
+    // Horizontal clue number corresponds to row number (1-based to 0-based)
+    const targetRow = number - 1;
     
-    for (let col = actualStartCol; col < Math.min(actualStartCol + actualLength, gridCols); col++) {
-      if (targetRow >= 0 && targetRow < grid.length && grid[targetRow] && col >= 0 && col < gridCols) {
+    // Highlight entire row
+    if (targetRow >= 0 && targetRow < gridRows) {
+      for (let col = 0; col < gridCols; col++) {
         positions.push({ row: targetRow, col });
       }
     }
   } else if (direction === 'vertical') {
-    // Highlight entire column (or specified length from startRow)
-    const targetCol = startCol;
-    const gridRows = grid.length;
-    const actualLength = length || gridRows;
-    const actualStartRow = startRow || 0;
+    // Vertical clue number corresponds to column number (1-based to 0-based)
+    const targetCol = number - 1;
     
-    for (let row = actualStartRow; row < Math.min(actualStartRow + actualLength, gridRows); row++) {
-      if (row >= 0 && row < gridRows && grid[row] && targetCol >= 0 && targetCol < (grid[row]?.length || 0)) {
+    // Highlight entire column  
+    if (targetCol >= 0 && targetCol < gridCols) {
+      for (let row = 0; row < gridRows; row++) {
         positions.push({ row, col: targetCol });
       }
     }
