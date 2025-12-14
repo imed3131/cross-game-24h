@@ -341,8 +341,8 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
         </div>
       </div>
       
-      {/* Timer Display with Pause/Play/Reset - Now outside the flex container */}
-      <div className="text-center mt-4">
+      {/* Timer Display - separated from game controls */}
+      <div className="text-center mt-4 space-y-3">
         <div className="inline-flex items-center gap-3 px-4 py-2 bg-gray-100 rounded-lg">
           <button
             onClick={() => isPaused ? resumeTimer() : pauseTimer()}
@@ -390,14 +390,16 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
               return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             })()} {isPaused && '(Pause)'}
           </span>
-          
-          {/* Reset game button - clear French label */}
+        </div>
+        
+        {/* Game Reset Button - separated and clearly labeled */}
+        <div>
           <button
             onClick={() => externalResetGame && externalResetGame()}
-            className="ml-4 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium rounded transition-colors border border-red-300"
-            title="Réinitialiser la partie"
+            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
+            title="Recommencer la partie depuis le début"
           >
-            Réinitialiser
+            🔄 Recommencer la partie
           </button>
         </div>
       </div>
