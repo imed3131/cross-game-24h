@@ -46,7 +46,7 @@ export const useCrosswordGame = () => {
     });
 
     return true;
-  }, [state.currentGrid, state.currentPuzzle, state.language, dispatch]);
+  }, [dispatch]);
 
   // Select cell
   const selectCell = useCallback((row, col) => {
@@ -69,7 +69,7 @@ export const useCrosswordGame = () => {
         selectWord(word);
       }
     }
-  }, [dispatch, state.currentPuzzle]);
+  }, [dispatch]);
 
   // Select word
   const selectWord = useCallback((word) => {
@@ -99,7 +99,7 @@ export const useCrosswordGame = () => {
         payload: { cell: { row: firstPosition.row, col: firstPosition.col } },
       });
     }
-  }, [state.currentGrid, dispatch]);
+  }, [dispatch]);
 
   // Handle keyboard input
   const handleKeyInput = useCallback((key) => {
@@ -132,7 +132,7 @@ export const useCrosswordGame = () => {
         }
       }
     }
-  }, [state.selectedCell, state.currentPuzzle, state.selectedWord, state.currentGrid, updateGridCell, selectCell]);
+  }, [state.selectedCell, state.currentPuzzle, state.selectedWord, state.currentGrid]);
 
   // Check if puzzle is completed
   useEffect(() => {
