@@ -20,7 +20,6 @@ const CluesPanel = ({
   const handleWordClick = (clue, direction) => {
     // Si l'indice est déjà sélectionné, le désélectionner
     if (isWordSelected(clue, direction)) {
-      console.log('Deselecting word:', clue.number, direction);
       onWordSelect?.(null);
       return;
     }
@@ -35,7 +34,6 @@ const CluesPanel = ({
       length: direction === 'horizontal' ? (puzzle?.cols || 15) : (puzzle?.rows || 15)
     };
     
-    console.log('Word clicked:', word);
     onWordSelect?.(word);
   };
 
@@ -46,7 +44,6 @@ const CluesPanel = ({
   };
 
   const renderClue = (clue, direction) => {
-    console.log('Rendering clue:', clue, 'type:', typeof clue);
     const isArabic = language === 'AR';
     return (
       <motion.div
@@ -150,4 +147,4 @@ const CluesPanel = ({
   );
 };
 
-export default CluesPanel;
+export default React.memo(CluesPanel);

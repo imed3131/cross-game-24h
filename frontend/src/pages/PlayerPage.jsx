@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, RefreshCw, Sparkles, BookOpen, Trophy, Timer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -75,14 +75,14 @@ const PlayerPage = () => {
   }, [isCompleted, showCelebration, selectedPuzzle?.id]); // Removed function dependencies causing infinite loops
 
   // Handle date selection
-  const handleDateSelect = (date) => {
+  const handleDateSelect = useCallback((date) => {
     setSelectedDate(date);
     setShowCalendar(false);
     fetchPuzzlesByDate(date);
-  };
+  }, [fetchPuzzlesByDate]);
 
   // Handle puzzle navigation
-  const navigatePuzzle = (direction) => {
+  const navigatePuzzle = useCallback((direction) => {
     if (todaysPuzzles.length <= 1) return;
     
     const newIndex = direction === 'next' 
@@ -91,18 +91,24 @@ const PlayerPage = () => {
     
     setCurrentPuzzleIndex(newIndex);
     setSelectedPuzzle(todaysPuzzles[newIndex]);
-  };
+  }, [currentPuzzleIndex, todaysPuzzles, setSelectedPuzzle]);
 
   // Handle play again
-  const handlePlayAgain = () => {
+  const handlePlayAgain = useCallback(() => {
     setShowCelebration(false);
     resetGame();
     if (todaysPuzzles.length > 1) {
       navigatePuzzle('next');
     }
-  };
+  }, [resetGame, todaysPuzzles.length, navigatePuzzle]);
 
-
+  // Memoized values to prevent unnecessary re-renders
+  const hasPuzzles = useMemo(() => todaysPuzzles.length > 0, [todaysPuzzles.length]);
+  const hasMultiplePuzzles = useMemo(() => todaysPuzzles.length > 1, [todaysPuzzles.length]);
+  const currentLanguageDisplay = useMemo(() => 
+    language === 'FR' ? 'Français' : 'العربية', 
+    [language]
+  );
 
   if (loading) {
     return (
@@ -280,7 +286,7 @@ const PlayerPage = () => {
                       <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
                       <div className="text-white">
                         <div className="text-xs sm:text-sm font-semibold">
-                          {language === 'FR' ? 'Français' : 'العربية'}
+                          {currentLanguageDisplay}
                         </div>
                       </div>
                     </div>
@@ -326,7 +332,7 @@ const PlayerPage = () => {
           </AnimatePresence>
 
           {/* Game of the Day Section */}
-          {todaysPuzzles.length > 0 ? (
+          {hasPuzzles ? (
             <motion.div 
               className="mb-12"
               initial={{ opacity: 0, y: 30 }}
@@ -347,7 +353,7 @@ const PlayerPage = () => {
                   </h2>
                 </motion.div>
                 
-                {todaysPuzzles.length > 1 && (
+                {hasMultiplePuzzles && (
                   <motion.div
                     className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4 backdrop-blur-lg bg-white/10 rounded-xl lg:rounded-2xl border border-white/20 p-2 sm:p-2.5 lg:p-3 shadow-xl"
                     initial={{ x: 30, opacity: 0 }}

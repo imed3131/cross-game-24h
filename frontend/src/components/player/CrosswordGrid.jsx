@@ -367,4 +367,4 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, className = '' }) =
   );
 };
 
-export default CrosswordGrid;
+export default React.memo(CrosswordGrid);
