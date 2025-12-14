@@ -21,7 +21,7 @@ export const useCrosswordGame = () => {
     });
   }, [dispatch]);
 
-  // Update grid cell
+  // Update grid cell with immutable updates
   const updateGridCell = useCallback((row, col, value) => {
     if (!state.currentGrid || !state.currentPuzzle) return;
 
@@ -37,8 +37,15 @@ export const useCrosswordGame = () => {
       return false;
     }
 
-    const newGrid = [...state.currentGrid];
-    newGrid[row][col] = value.toUpperCase();
+    // Create immutable grid update
+    const newGrid = state.currentGrid.map((rowData, rowIndex) => {
+      if (rowIndex === row) {
+        return rowData.map((cellValue, colIndex) => 
+          colIndex === col ? value.toUpperCase() : cellValue
+        );
+      }
+      return [...rowData]; // Create new array reference for each row
+    });
 
     dispatch({
       type: GAME_ACTIONS.UPDATE_GRID,
@@ -46,7 +53,7 @@ export const useCrosswordGame = () => {
     });
 
     return true;
-  }, [dispatch]);
+  }, [state.currentGrid, state.currentPuzzle, state.language, dispatch]);
 
   // Select cell
   const selectCell = useCallback((row, col) => {
@@ -240,6 +247,21 @@ export const useCrosswordGame = () => {
     }
   }, [dispatch, state.currentPuzzle]);
 
+  // Start a completely new game (clears all stored state)
+  const startNewGame = useCallback((puzzle) => {
+    // Clear all localStorage first
+    localStorage.removeItem('gameState');
+    localStorage.removeItem('gameVersion');
+    
+    // Initialize with fresh puzzle
+    if (puzzle) {
+      initializePuzzle(puzzle);
+    } else {
+      // Just reset current game
+      resetGame();
+    }
+  }, [initializePuzzle, resetGame]);
+
   // Show solution
   const toggleSolution = useCallback((show) => {
     dispatch({
@@ -269,6 +291,7 @@ export const useCrosswordGame = () => {
     selectWord,
     handleKeyInput,
     resetGame,
+    startNewGame,
     toggleSolution,
     getElapsedTime,
     pauseTimer,

@@ -40,6 +40,25 @@ const gameReducer = (state, action) => {
   switch (action.type) {
     case GAME_ACTIONS.SET_PUZZLE:
       const { puzzle } = action.payload;
+      
+      // Clear any existing saved state when loading a new puzzle
+      if (puzzle) {
+        const currentSavedState = localStorage.getItem('gameState');
+        if (currentSavedState) {
+          try {
+            const parsedState = JSON.parse(currentSavedState);
+            // If different puzzle ID, clear saved state
+            if (!parsedState.currentPuzzle || parsedState.currentPuzzle.id !== puzzle.id) {
+              localStorage.removeItem('gameState');
+              localStorage.removeItem('gameVersion');
+            }
+          } catch (error) {
+            localStorage.removeItem('gameState');
+            localStorage.removeItem('gameVersion');
+          }
+        }
+      }
+      
       return {
         ...state,
         currentPuzzle: puzzle,
@@ -123,6 +142,10 @@ const gameReducer = (state, action) => {
       };
       
     case GAME_ACTIONS.RESET_GAME:
+      // Clear localStorage when resetting game
+      localStorage.removeItem('gameState');
+      localStorage.removeItem('gameVersion');
+      
       return {
         ...initialState,
         language: state.language,
@@ -132,6 +155,7 @@ const gameReducer = (state, action) => {
               Array(state.currentPuzzle.cols).fill('')
             )
           : null,
+        startTime: new Date(), // Reset start time for new game
       };
       
     case GAME_ACTIONS.SET_LANGUAGE:
@@ -145,34 +169,88 @@ const gameReducer = (state, action) => {
   }
 };
 
+// Utility function to clear all game-related localStorage
+const clearGameStorage = () => {
+  try {
+    localStorage.removeItem('gameState');
+    localStorage.removeItem('gameVersion');
+    console.log('Game storage cleared successfully');
+  } catch (error) {
+    console.error('Failed to clear game storage:', error);
+  }
+};
+
 // Game state provider
 export const GameStateProvider = ({ children }) => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
   
-  // Load saved game state from localStorage
+  // Clear storage on app initialization (ensures fresh start)
   useEffect(() => {
+    const handleAppLoad = () => {
+      // Check if this is a fresh app load (not just a component remount)
+      const isInitialLoad = !sessionStorage.getItem('appLoaded');
+      if (isInitialLoad) {
+        clearGameStorage();
+        sessionStorage.setItem('appLoaded', 'true');
+      }
+    };
+    
+    handleAppLoad();
+  }, []);
+  
+  // Load saved game state from localStorage with version control
+  useEffect(() => {
+    // Only attempt to load if we have a current puzzle
+    if (!state.currentPuzzle?.id) return;
+    
     const savedState = localStorage.getItem('gameState');
-    if (savedState) {
+    const gameVersion = localStorage.getItem('gameVersion');
+    const currentPuzzleId = state.currentPuzzle.id;
+    
+    if (savedState && gameVersion && currentPuzzleId) {
       try {
         const parsedState = JSON.parse(savedState);
-        // Only restore certain parts of the state
-        if (parsedState.currentPuzzle && parsedState.currentGrid) {
-          dispatch({
-            type: GAME_ACTIONS.SET_PUZZLE,
-            payload: { puzzle: parsedState.currentPuzzle }
-          });
-          dispatch({
-            type: GAME_ACTIONS.UPDATE_GRID,
-            payload: { grid: parsedState.currentGrid }
-          });
+        
+        // Only restore if it's the same puzzle and version is recent (within 24 hours)
+        const versionTimestamp = parseInt(gameVersion.split('_')[1]);
+        const isRecentVersion = versionTimestamp && (Date.now() - versionTimestamp < 24 * 60 * 60 * 1000);
+        
+        if (parsedState.currentPuzzle && 
+            parsedState.currentGrid && 
+            parsedState.currentPuzzle.id === currentPuzzleId &&
+            isRecentVersion &&
+            Array.isArray(parsedState.currentGrid)) {
+          
+          // Validate grid structure before restoring
+          const expectedRows = state.currentPuzzle.rows || parsedState.currentGrid.length;
+          const expectedCols = state.currentPuzzle.cols || parsedState.currentGrid[0]?.length;
+          
+          if (parsedState.currentGrid.length === expectedRows &&
+              parsedState.currentGrid.every(row => Array.isArray(row) && row.length === expectedCols)) {
+            // Only restore the grid, not the entire state
+            dispatch({
+              type: GAME_ACTIONS.UPDATE_GRID,
+              payload: { grid: parsedState.currentGrid }
+            });
+          } else {
+            // Grid structure mismatch, clear saved state
+            localStorage.removeItem('gameState');
+            localStorage.removeItem('gameVersion');
+          }
+        } else {
+          // Clear old/invalid saved state
+          localStorage.removeItem('gameState');
+          localStorage.removeItem('gameVersion');
         }
       } catch (error) {
         console.error('Failed to load saved game state:', error);
+        localStorage.removeItem('gameState');
+        localStorage.removeItem('gameVersion');
       }
     }
-  }, []);
-  
-  // Save game state to localStorage
+  }, [state.currentPuzzle?.id, state.currentPuzzle?.rows, state.currentPuzzle?.cols]);
+
+  // Save game state to localStorage with version control
   useEffect(() => {
     if (state.currentPuzzle && state.currentGrid && !state.isCompleted) {
       const stateToSave = {
@@ -180,19 +258,23 @@ export const GameStateProvider = ({ children }) => {
         currentGrid: state.currentGrid,
         startTime: state.startTime,
         language: state.language,
+        sessionId: `${state.currentPuzzle.id}_${Date.now()}`
       };
+      
+      const gameVersion = `${state.currentPuzzle.id}_${Date.now()}`;
+      
       localStorage.setItem('gameState', JSON.stringify(stateToSave));
+      localStorage.setItem('gameVersion', gameVersion);
     }
   }, [state.currentGrid, state.currentPuzzle, state.isCompleted]);
-  
-  // Clear saved state when puzzle is completed
+
+  // Clear saved state when puzzle is completed or changed
   useEffect(() => {
     if (state.isCompleted) {
       localStorage.removeItem('gameState');
+      localStorage.removeItem('gameVersion');
     }
-  }, [state.isCompleted]);
-  
-  return (
+  }, [state.isCompleted]);  return (
     <GameStateContext.Provider value={{ state, dispatch }}>
       {children}
     </GameStateContext.Provider>

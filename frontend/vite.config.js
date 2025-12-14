@@ -12,5 +12,20 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Ensure unique filenames to prevent caching issues
+        entryFileNames: `assets/[name].[hash].js`,
+        chunkFileNames: `assets/[name].[hash].js`,
+        assetFileNames: `assets/[name].[hash].[ext]`
+      }
+    }
+  }
 })
