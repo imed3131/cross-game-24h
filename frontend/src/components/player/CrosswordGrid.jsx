@@ -185,28 +185,13 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, className = '' }) =
     return null;
   };
 
-  // Debug logging
-  console.log('CrosswordGrid Debug:');
-  console.log('- currentGrid:', currentGrid, 'isArray:', Array.isArray(currentGrid), 'length:', currentGrid?.length);
-  console.log('- puzzle:', puzzle);
-  console.log('- puzzle.solution:', puzzle?.solution, 'isArray:', Array.isArray(puzzle?.solution));
-  console.log('- puzzle.grid:', puzzle?.grid);
-  console.log('- puzzle.rows:', puzzle?.rows, 'cols:', puzzle?.cols);
-
   // Early return if no valid grid data
   if (!currentGrid || !Array.isArray(currentGrid) || currentGrid.length === 0 || 
       !puzzle || !puzzle.solution || !Array.isArray(puzzle.solution)) {
-    console.log('CrosswordGrid: Missing data, showing "Pas de partie disponible"');
     return (
       <div className="grid gap-1 p-4 bg-white rounded-2xl shadow-lg">
         <div className="text-center text-gray-500 p-8">
-          Pas de partie disponible
-          <br />
-          <small className="text-xs">
-            Debug: currentGrid={currentGrid ? 'OK' : 'MISSING'}, 
-            puzzle={puzzle ? 'OK' : 'MISSING'}, 
-            solution={puzzle?.solution ? 'OK' : 'MISSING'}
-          </small>
+          Pas de partie disponible pour le moment
         </div>
       </div>
     );
