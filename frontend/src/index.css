@@ -23,6 +23,15 @@
   .rtl input {
     text-align: right;
   }
+
+  /* Force LTR for the crossword player grid when necessary */
+  .player-grid-force-ltr {
+    direction: ltr !important;
+  }
+  .player-grid-force-ltr input {
+    direction: ltr !important;
+    text-align: center !important;
+  }
 }
 
 @layer components {

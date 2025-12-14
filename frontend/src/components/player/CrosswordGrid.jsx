@@ -194,6 +194,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     return hoveredCell && hoveredCell.row === row && hoveredCell.col === col;
   };
 
+
   const getCellNumber = (row, col) => {
     // For the simplified grid system where:
     // - Horizontal clues are numbered by row (1-based)  
@@ -206,19 +207,18 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     const isBlackCell = puzzle.solution?.[row]?.[col] === '' || puzzle.solution?.[row]?.[col] === '#';
     if (isBlackCell) return null;
     
-    // For RTL (Arabic), show numbers on the right side and bottom
-    // For LTR (French), show numbers on the left side and top
-    const isRTLLanguage = language === 'AR';
-    
-    // Show row numbers on the appropriate side
-    const showRowNumber = isRTLLanguage ? 
-      (col === puzzle.cols - 1) : // Right side for Arabic
-      (col === 0);                // Left side for French
-      
-    // Show column numbers on the appropriate side  
-    const showColNumber = isRTLLanguage ?
-      (row === puzzle.rows - 1) : // Bottom for Arabic
-      (row === 0);                // Top for French
+  // For Arabic we want the grid to appear like the French layout but
+  // with numbers located as follows:
+  // - Row numbers on the right side
+  // - Column numbers on the top
+  // For French (LTR) we keep: row numbers on the left, column numbers on the top
+  const isRTLLanguage = language === 'AR';
+
+  // Show row numbers on the leftmost column for both languages
+  const showRowNumber = (col === 0);
+
+  // Show column numbers: always on the top row for both languages
+  const showColNumber = (row === 0);
     
     if (showRowNumber && puzzle.cluesHorizontal && puzzle.cluesHorizontal[rowNumber]) {
       return rowNumber;
@@ -243,7 +243,8 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
   }
 
   const gridSize = puzzle?.gridSize || currentGrid?.length || 0;
-  const isRTL = language === 'AR';
+  // Always render grid LTR, even for Arabic
+  const isRTL = false;
 
   // Conditional rendering AFTER all hooks have been called
   if (!puzzle) {
@@ -258,6 +259,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     <motion.div
       ref={gridRef}
       className={`p-2 sm:p-3 lg:p-4 bg-white rounded-xl lg:rounded-2xl shadow-lg ${className}`}
+      style={{ direction: 'ltr' }}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
@@ -276,8 +278,10 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
       <div className="flex justify-center mb-4">
         {/* Crossword grid */}
         <div 
-          className="grid gap-0.5 sm:gap-1"
+          className="grid gap-0.5 sm:gap-1 player-grid-force-ltr"
+          dir="ltr"
           style={{ 
+            direction: 'ltr',
             gridTemplateColumns: `repeat(${puzzle.cols || gridSize}, minmax(0, 1fr))`
           }}
         >
@@ -299,6 +303,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                     isSelected={isSelected}
                     isHovered={isHovered}
                     isBlackCell={isBlackCell}
+                    language={language}
                     cellNumber={cellNumber}
                     row={rowIndex}
                     col={colIndex}

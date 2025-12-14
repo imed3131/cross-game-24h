@@ -167,8 +167,8 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, className = '' }) =
   return (
     <motion.div
       ref={gridRef}
-      className={`p-4 bg-white rounded-2xl shadow-lg ${isRTL ? 'rtl' : ''} ${className}`}
-      style={{ direction: isRTL ? 'rtl' : 'ltr' }}
+  className={`p-4 bg-white rounded-2xl shadow-lg ${isRTL ? 'rtl' : ''} ${className} ${isRTL ? 'player-grid-force-ltr' : ''}`}
+  style={{ direction: isRTL ? 'rtl' : 'ltr' }}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}

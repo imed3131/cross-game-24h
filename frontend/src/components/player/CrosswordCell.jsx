@@ -14,6 +14,7 @@ const CrosswordCell = ({
   onClick,
   onMouseEnter,
   onMouseLeave,
+  language = 'FR',
   className = ''
 }) => {
   const inputRef = useRef(null);
@@ -33,19 +34,21 @@ const CrosswordCell = ({
 
   const handleInputChange = (e) => {
     const newValue = e.target.value;
-    
-    // Handle multiple characters - take only the last one
     let finalChar = '';
     if (newValue.length > 0) {
-      // Get the last character typed
-      finalChar = newValue.slice(-1).toUpperCase();
-      
-      // Only accept alphabetic characters
-      if (finalChar.match(/[A-ZÀ-ÿ]/i)) {
+      finalChar = newValue.slice(-1);
+      let allowed = false;
+      if (language === 'AR') {
+        // Accept only Arabic letters
+        allowed = /[\u0600-\u06FF]/.test(finalChar);
+      } else {
+        // Accept only French/Latin letters
+        allowed = /[A-ZÀ-ÿ]/i.test(finalChar);
+        finalChar = finalChar.toUpperCase();
+      }
+      if (allowed) {
         setInputValue(finalChar);
         onChange(finalChar, row, col);
-        
-        // Auto-advance to next cell
         if (onNavigate) {
           setTimeout(() => {
             onNavigate('next', row, col);
@@ -53,7 +56,6 @@ const CrosswordCell = ({
         }
       }
     } else {
-      // Empty input - clear the cell
       setInputValue('');
       onChange('', row, col);
     }

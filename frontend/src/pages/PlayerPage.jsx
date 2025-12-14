@@ -404,12 +404,14 @@ const PlayerPage = () => {
                 >
                   {/* Grid Card */}
                   <div className="backdrop-blur-lg bg-white/10 rounded-2xl lg:rounded-3xl border border-white/20 p-3 sm:p-6 lg:p-8 shadow-2xl">
-                    <CrosswordGrid
-                      puzzle={currentPuzzle}
-                      resetGame={resetGame}
-                      onCellSelect={() => {}}
-                      onWordSelect={selectWord}
-                    />
+                    <div className="player-grid-force-ltr">
+                      <CrosswordGrid
+                        puzzle={currentPuzzle}
+                        resetGame={resetGame}
+                        onCellSelect={() => {}}
+                        onWordSelect={selectWord}
+                      />
+                    </div>
                   </div>
                 </motion.div>
 
