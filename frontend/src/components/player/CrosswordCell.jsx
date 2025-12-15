@@ -142,7 +142,7 @@ const CrosswordCell = ({
     <div 
       className={`
         relative w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12
-        border-2 transition-all duration-200
+        border transition-all duration-150
         ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
         ${isHovered ? 'bg-gray-50' : 'bg-white'}
         ${className}
@@ -159,7 +159,7 @@ const CrosswordCell = ({
       )}
       
       {/* Input field */}
-      <input
+  <input
         ref={inputRef}
         type="text"
         value={inputValue}
@@ -171,7 +171,7 @@ const CrosswordCell = ({
           w-full h-full 
           text-center font-bold text-lg sm:text-xl
           bg-transparent border-0 outline-0
-          ${cellNumber ? 'pt-2' : 'pt-0'}
+          ${cellNumber ? 'pt-1' : 'pt-0'}
           focus:ring-0 focus:outline-none
           ${isSelected ? 'text-blue-700' : 'text-black'}
         `}

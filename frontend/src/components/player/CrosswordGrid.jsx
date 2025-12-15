@@ -24,6 +24,8 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
   } = useCrosswordGame();
 
   const gridRef = useRef(null);
+  const scrollRef = useRef(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
   const [cellRefs, setCellRefs] = useState({});
   const [hoveredCell, setHoveredCell] = useState({ row: -1, col: -1 });
   const [currentTime, setCurrentTime] = useState(0);
@@ -37,6 +39,28 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     return () => clearInterval(interval);
   }, [getElapsedTime]);
 
+  // Track whether the horizontal container is overflowing so we can left-align when needed
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const check = () => {
+      const ov = el.scrollWidth > el.clientWidth;
+      setIsOverflowing(ov);
+      if (ov) el.scrollLeft = 0; // ensure left edge visible
+    };
+    check();
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(check);
+      ro.observe(el);
+      window.addEventListener('orientationchange', check);
+      return () => {
+        ro.disconnect();
+        window.removeEventListener('orientationchange', check);
+      };
+    }
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [puzzle, currentGrid]);
   // Update timer immediately after reset
   const handleResetTimer = () => {
     resetTimer();
@@ -243,6 +267,8 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
   }
 
   const gridSize = puzzle?.gridSize || currentGrid?.length || 0;
+  // If the grid has more than 11 columns, allow horizontal scrolling on small screens only
+  const needsHorizontalScroll = (puzzle?.cols || gridSize) > 11;
   // Always render grid LTR, even for Arabic
   const isRTL = false;
 
@@ -276,15 +302,18 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
 
       {/* Grid without numbered rows and columns */}
       <div className="flex justify-center mb-4">
-        {/* Crossword grid */}
-        <div 
-          className="grid gap-0.5 sm:gap-1 player-grid-force-ltr"
-          dir="ltr"
-          style={{ 
-            direction: 'ltr',
-            gridTemplateColumns: `repeat(${puzzle.cols || gridSize}, minmax(0, 1fr))`
-          }}
-        >
+        {/* When grid exceeds available width, allow horizontal scrolling */}
+  <div ref={scrollRef} className={`w-full overflow-x-auto flex ${isOverflowing ? 'justify-start' : 'justify-center'}`}>
+          <div className="w-auto">
+            <div 
+              className="grid gap-0.5 sm:gap-1 player-grid-force-ltr"
+              dir="ltr"
+              style={{ 
+                direction: 'ltr',
+                width: 'max-content',
+                gridTemplateColumns: `repeat(${puzzle.cols || gridSize}, minmax(0, 1fr))`
+              }}
+            >
             {currentGrid?.map((row, rowIndex) => {
               if (!Array.isArray(row)) return null;
               return row.map((cell, colIndex) => {
@@ -317,9 +346,11 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                 );
               });
             })}
+          </div>
         </div>
       </div>
-      
+    </div>
+
       {/* Timer Display - separated from game controls */}
       <div className="text-center mt-4 space-y-3">
         <div className="inline-flex items-center gap-3 px-4 py-2 bg-gray-100 rounded-lg">
