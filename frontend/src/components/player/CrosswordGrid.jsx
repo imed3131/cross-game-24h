@@ -76,26 +76,34 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
   // Handle navigation between cells
   const handleCellNavigation = useCallback((direction, currentRow, currentCol) => {
     if (!puzzle) return;
+    // Translate logical directions ('next'/'previous') to physical directions depending on language
+    // For Arabic (RTL) 'next' => 'left', 'previous' => 'right'
+    const physical = (dir) => {
+      if (dir === 'next') return language === 'AR' ? 'left' : 'right';
+      if (dir === 'previous') return language === 'AR' ? 'right' : 'left';
+      return dir;
+    };
 
+    const physDir = physical(direction);
     let newRow = currentRow;
     let newCol = currentCol;
 
-    switch (direction) {
-      case 'next':
+    switch (physDir) {
       case 'right':
         if (currentCol < (puzzle.cols || currentGrid[0]?.length || 0) - 1) {
           newCol = currentCol + 1;
         } else if (currentRow < (puzzle.rows || currentGrid?.length || 0) - 1) {
+          // move down when reaching end of line
           newRow = currentRow + 1;
           newCol = 0;
         }
         break;
-      case 'previous':
       case 'left':
         if (currentCol > 0) {
           newCol = currentCol - 1;
-        } else if (currentRow > 0) {
-          newRow = currentRow - 1;
+        } else if (currentRow < (puzzle.rows || currentGrid?.length || 0) - 1) {
+          // when at leftmost, wrap down to next row's last column (maintain writing order downwards)
+          newRow = currentRow + 1;
           newCol = (puzzle.cols || currentGrid[0]?.length || 0) - 1;
         }
         break;
@@ -115,8 +123,9 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     while (newRow >= 0 && newRow < (puzzle.rows || currentGrid?.length || 0) &&
            newCol >= 0 && newCol < (puzzle.cols || currentGrid[0]?.length || 0) &&
            (puzzle.solution?.[newRow]?.[newCol] === '' || puzzle.solution?.[newRow]?.[newCol] === '#')) {
-      
-      if (direction === 'next' || direction === 'right') {
+
+      const stepDir = physical(direction);
+      if (stepDir === 'right') {
         if (newCol < (puzzle.cols || currentGrid[0]?.length || 0) - 1) {
           newCol++;
         } else if (newRow < (puzzle.rows || currentGrid?.length || 0) - 1) {
@@ -125,11 +134,12 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
         } else {
           break;
         }
-      } else if (direction === 'previous' || direction === 'left') {
+      } else if (stepDir === 'left') {
         if (newCol > 0) {
           newCol--;
-        } else if (newRow > 0) {
-          newRow--;
+        } else if (newRow < (puzzle.rows || currentGrid?.length || 0) - 1) {
+          // wrap downwards instead of upwards
+          newRow++;
           newCol = (puzzle.cols || currentGrid[0]?.length || 0) - 1;
         } else {
           break;

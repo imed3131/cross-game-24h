@@ -36,7 +36,7 @@ const CrosswordCell = ({
     const newValue = e.target.value;
     let finalChar = '';
     if (newValue.length > 0) {
-      finalChar = newValue.slice(-1);
+  finalChar = newValue.slice(-1); // Get the last character
       let allowed = false;
       if (language === 'AR') {
         // Accept only Arabic letters
@@ -51,6 +51,7 @@ const CrosswordCell = ({
         onChange(finalChar, row, col);
         if (onNavigate) {
           setTimeout(() => {
+            // Use logical 'next' (advance in writing order). Grid will map to physical direction.
             onNavigate('next', row, col);
           }, 50);
         }
@@ -71,9 +72,10 @@ const CrosswordCell = ({
         onChange('', row, col);
       } else {
         // Move to previous cell
-        if (onNavigate) {
-          onNavigate('previous', row, col);
-        }
+          if (onNavigate) {
+            // Use logical 'previous' (move backward in writing order). Grid will map to physical direction.
+            onNavigate('previous', row, col);
+          }
       }
       return;
     }
@@ -93,8 +95,8 @@ const CrosswordCell = ({
       onNavigate('down', row, col);
     }
 
-    // For letter keys, let the input handle it
-    if (e.key.length === 1 && e.key.match(/[A-ZÀ-ÿ]/i)) {
+    // For letter keys, let the input handle it (support Arabic when language==='AR')
+    if (e.key.length === 1 && ((language === 'AR' && /[\u0600-\u06FF]/.test(e.key)) || (language !== 'AR' && e.key.match(/[A-ZÀ-ÿ]/i)))) {
       // Clear current content to allow new character
       setInputValue('');
     }
@@ -110,17 +112,18 @@ const CrosswordCell = ({
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
     if (pastedText) {
-      // Take only the last alphabetic character from pasted text
-      const letters = pastedText.match(/[A-ZÀ-ÿ]/gi);
+      // Take only the last alphabetic character from pasted text, using language-aware regex
+      const letters = language === 'AR' ? pastedText.match(/[\u0600-\u06FF]/g) : pastedText.match(/[A-ZÀ-ÿ]/gi);
       if (letters && letters.length > 0) {
-        const lastLetter = letters[letters.length - 1].toUpperCase();
+        const raw = letters[letters.length - 1];
+        const lastLetter = language === 'AR' ? raw : raw.toUpperCase();
         setInputValue(lastLetter);
         onChange(lastLetter, row, col);
         
         if (onNavigate) {
           setTimeout(() => {
-            onNavigate('next', row, col);
-          }, 50);
+            onNavigate(language === 'AR' ? 'left' : 'next', row, col);
+          }, 50); // Adjust navigation based on language
         }
       }
     }
