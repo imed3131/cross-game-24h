@@ -79,7 +79,7 @@ export const useCrosswordGame = () => {
   }, [dispatch]);
 
   // Select word
-  const selectWord = useCallback((word) => {
+  const selectWord = useCallback((word, autoSelectCell = true) => {
     if (!word) {
       dispatch({
         type: GAME_ACTIONS.SELECT_WORD,
@@ -109,8 +109,8 @@ export const useCrosswordGame = () => {
       },
     });
     
-    // Sélectionner automatiquement la première cellule du mot
-    if (positions.length > 0) {
+    // Sélectionner automatiquement la première cellule du mot seulement si demandé
+    if (autoSelectCell && positions.length > 0) {
       const firstPosition = positions[0];
       dispatch({
         type: GAME_ACTIONS.SELECT_CELL,

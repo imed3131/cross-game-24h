@@ -15,7 +15,7 @@ const initialState = {
   isPaused: false,
   isCompleted: false,
   showingSolution: false,
-  language: 'FR', // Default language
+  language: 'FR', // Default language - French
 };
 
 // Game actions

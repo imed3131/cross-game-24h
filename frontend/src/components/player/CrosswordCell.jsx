@@ -38,8 +38,9 @@ const CrosswordCell = ({
     const newValue = e.target.value;
     let finalChar = '';
     if (newValue.length > 0) {
-  finalChar = newValue.slice(-1); // Get the last character
+      finalChar = newValue.slice(-1); // Get the last character
       let allowed = false;
+      
       if (language === 'AR') {
         // Accept only Arabic letters
         allowed = /[\u0600-\u06FF]/.test(finalChar);
@@ -48,23 +49,16 @@ const CrosswordCell = ({
         allowed = /[A-ZÀ-ÿ]/i.test(finalChar);
         finalChar = finalChar.toUpperCase();
       }
+      
       if (allowed) {
         setInputValue(finalChar);
         onChange(finalChar, row, col);
-        if (onNavigate) {
-          setTimeout(() => {
-            // Use logical 'next' (advance in writing order). Grid will map to physical direction.
-            onNavigate('next', row, col);
-          }, 50);
-        }
       }
     } else {
       setInputValue('');
       onChange('', row, col);
     }
-  };
-
-  const handleKeyDown = (e) => {
+  };  const handleKeyDown = (e) => {
     // Handle backspace
     if (e.key === 'Backspace') {
       e.preventDefault();
@@ -72,17 +66,12 @@ const CrosswordCell = ({
         // Clear current cell
         setInputValue('');
         onChange('', row, col);
-      } else {
-        // Move to previous cell
-          if (onNavigate) {
-            // Use logical 'previous' (move backward in writing order). Grid will map to physical direction.
-            onNavigate('previous', row, col);
-          }
       }
+      // Navigation is now manual only through buttons
       return;
     }
 
-    // Handle arrow key navigation
+    // Handle arrow key navigation (manual navigation, doesn't change auto-direction)
     if (e.key === 'ArrowLeft' && onNavigate) {
       e.preventDefault();
       onNavigate('left', row, col);
@@ -97,8 +86,12 @@ const CrosswordCell = ({
       onNavigate('down', row, col);
     }
 
-    // For letter keys, let the input handle it (support Arabic when language==='AR')
-    if (e.key.length === 1 && ((language === 'AR' && /[\u0600-\u06FF]/.test(e.key)) || (language !== 'AR' && e.key.match(/[A-ZÀ-ÿ]/i)))) {
+    // For letter keys and help symbols, let the input handle it
+    if (e.key.length === 1 && (
+      ['*', '#', '!', '@', '.'].includes(e.key) || 
+      (language === 'AR' && /[\u0600-\u06FF]/.test(e.key)) || 
+      (language !== 'AR' && e.key.match(/[A-ZÀ-ÿ]/i))
+    )) {
       // Clear current content to allow new character
       setInputValue('');
     }
@@ -166,7 +159,7 @@ const CrosswordCell = ({
             e.stopPropagation();
             if (typeof onNumberClick === 'function') onNumberClick(row, col);
           }}
-          className="absolute top-0 left-0 text-xs leading-none p-0.5 text-gray-600 font-medium w-5 h-5 flex items-center justify-center rounded"
+          className="absolute top-0 left-0 text-xs leading-none p-0.5 text-gray-600 font-medium w-5 h-5 flex items-center justify-center rounded border border-blue-400 bg-white hover:bg-blue-50 transition-colors"
         >
           {cellNumber}
         </button>
