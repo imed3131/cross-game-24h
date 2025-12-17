@@ -317,32 +317,28 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
           top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth 
         };
         
-        // Unified placement: render clues above their anchor (same as column behavior)
+        // For both columns and rows we render the clue above the anchor (side = 'top')
         const side = 'top';
         
-        // Calculate arrow offset in wrapper coordinates
-        let anchorCenterX = anchorRect.left + anchorRect.width / 2 - wrapperRect.left;
-        let anchorCenterY = anchorRect.top + anchorRect.height / 2 - wrapperRect.top;
+        // Anchor center in viewport coords
+        const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+        const anchorCenterY = anchorRect.top + anchorRect.height / 2;
         
-        let arrowOffset = 0;
-        if (side === 'top' || side === 'bottom') {
-          const clueLeft = anchorRect.left + anchorRect.width / 2 - clueRect.width / 2 - wrapperRect.left;
-          arrowOffset = anchorCenterX - clueLeft;
-          // clamp
-          const min = 12;
-          const max = Math.max(min, clueRect.width - 12);
-          if (arrowOffset < min) arrowOffset = min;
-          if (arrowOffset > max) arrowOffset = max;
-        } else {
-          const clueTop = anchorRect.top + anchorRect.height / 2 - clueRect.height / 2 - wrapperRect.top;
-          arrowOffset = anchorCenterY - clueTop;
-          const min = 12;
-          const max = Math.max(min, clueRect.height - 12);
-          if (arrowOffset < min) arrowOffset = min;
-          if (arrowOffset > max) arrowOffset = max;
-        }
+        // Preferred clue left (relative to wrapper)
+        let clueLeft = anchorCenterX - clueRect.width / 2 - wrapperRect.left;
+        const minLeft = clipRect.left - wrapperRect.left + 8; // leave small margin
+        const maxLeft = clipRect.right - wrapperRect.left - clueRect.width - 8;
+        if (clueLeft < minLeft) clueLeft = minLeft;
+        if (clueLeft > maxLeft) clueLeft = maxLeft;
         
-        setPosition({ side, arrowOffset });
+        // Arrow offset relative to clue box (in px)
+        let arrowOffset = anchorCenterX - (wrapperRect.left + clueLeft);
+        const minOffset = 12;
+        const maxOffset = Math.max(minOffset, clueRect.width - 12);
+        if (arrowOffset < minOffset) arrowOffset = minOffset;
+        if (arrowOffset > maxOffset) arrowOffset = maxOffset;
+        
+        setPosition({ side, arrowOffset, clueLeft });
       };
       
       compute();
@@ -359,15 +355,16 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
       const base = { position: 'absolute', zIndex: 9999 };
       
       if (side === 'bottom') {
-        return { ...base, top: 'calc(100% + 8px)', left: '50%', transform: 'translateX(-50%)' };
+        // If a custom clueLeft was computed use that; otherwise center
+        return position.clueLeft !== undefined ? { ...base, top: 'calc(100% + 8px)', left: `${position.clueLeft}px`, transform: 'none' } : { ...base, top: 'calc(100% + 8px)', left: '50%', transform: 'translateX(-50%)' };
       } else if (side === 'top') {
-        return { ...base, bottom: 'calc(100% + 8px)', left: '50%', transform: 'translateX(-50%)' };
-      } else if (side === 'right') {
-        return { ...base, left: 'calc(100% + 8px)', top: '50%', transform: 'translateY(-50%)' };
-      } else {
-        return { ...base, right: 'calc(100% + 8px)', top: '50%', transform: 'translateY(-50%)' };
-      }
-    };
+        return position.clueLeft !== undefined ? { ...base, bottom: 'calc(100% + 8px)', left: `${position.clueLeft}px`, transform: 'none' } : { ...base, bottom: 'calc(100% + 8px)', left: '50%', transform: 'translateX(-50%)' };
+       } else if (side === 'right') {
+         return { ...base, left: 'calc(100% + 8px)', top: '50%', transform: 'translateY(-50%)' };
+       } else {
+         return { ...base, right: 'calc(100% + 8px)', top: '50%', transform: 'translateY(-50%)' };
+       }
+     };
     
     const arrowClassMap = { top: 'arrow-down', bottom: 'arrow-up', left: 'arrow-right', right: 'arrow-left' };
     const arrowClass = arrowClassMap[position.side] || 'arrow-down';
