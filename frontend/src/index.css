@@ -109,9 +109,9 @@
     box-shadow: 0 12px 36px rgba(2,6,23,0.14), 0 3px 8px rgba(2,6,23,0.06);
     z-index: 1000;
     border: 1px solid rgba(15,23,42,0.06);
-    max-width: 300px;
-    width: max-content;
-    min-width: 120px;
+  max-width: 300px;
+  width: auto; /* allow content to wrap within max-width */
+  min-width: 120px;
     word-wrap: break-word;
   transition: opacity 140ms ease, transform 160ms cubic-bezier(.2,.9,.3,1);
   opacity: 0;
@@ -206,6 +206,20 @@
     color: #475569;
     cursor: pointer;
   }
+
+  /* Mobile mode: wider centered panel, no diamond tail */
+  .floating-clue.mobile-mode {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: min(92vw, 520px) !important;
+    max-width: 92vw !important;
+    bottom: 110px; /* above controls */
+    top: auto !important;
+    box-shadow: 0 18px 46px rgba(2,6,23,0.18);
+    border-radius: 12px;
+  }
+
+  .floating-clue.no-arrow::before { display: none; }
 
   /* entrance tweak */
   .floating-clue[data-visible="true"] {

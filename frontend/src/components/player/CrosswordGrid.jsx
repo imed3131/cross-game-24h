@@ -244,14 +244,12 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
         aria-modal="false"
         aria-label={`Indice ${floatingClue.type === 'row' ? 'ligne' : 'colonne'} ${floatingClue.index + 1}`}
         style={{
-          ...style,
-          // During the first render pass we keep the tooltip visually hidden while measuring
-          opacity: floatingClue.measuring ? 0 : style.opacity,
-          pointerEvents: floatingClue.measuring ? 'none' : undefined,
+          // When measuring, render off-screen to avoid transforms/position affecting measurement
+          ...(floatingClue.measuring ? { position: 'fixed', left: '-9999px', top: '-9999px', opacity: 0, pointerEvents: 'none' } : style),
           // expose arrow offset variables if present
           ['--arrow-left']: floatingClue.arrowLeft !== undefined ? `${floatingClue.arrowLeft}px` : undefined,
-          ['--arrow-top']: floatingClue.arrowTop !== undefined ? `${floatingClue.arrowTop}px` : undefined
-          , ['--arrow-size']: floatingClue.width ? '14px' : '14px'
+          ['--arrow-top']: floatingClue.arrowTop !== undefined ? `${floatingClue.arrowTop}px` : undefined,
+          ['--arrow-size']: floatingClue.width ? '14px' : '14px'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -350,9 +348,21 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
 
     const tipEl = tooltipRef.current;
     const anchor = floatingClue.anchorRect;
-    const tipRect = tipEl.getBoundingClientRect();
+  let tipRect = tipEl.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
+
+    // If tooltip is wider than viewport, constrain width and re-measure so it wraps vertically
+    const horizontalPadding = 16; // keep edges
+    if (tipRect.width > viewportWidth - horizontalPadding) {
+      const newWidth = Math.max(140, viewportWidth - horizontalPadding);
+      tipEl.style.width = `${newWidth}px`;
+      // reflow and re-measure
+      const newRect = tipEl.getBoundingClientRect();
+      // update tipRect reference
+      // eslint-disable-next-line prefer-const
+      tipRect = newRect;
+    }
 
     let top = floatingClue.top;
     let left = floatingClue.left;
@@ -385,7 +395,17 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
       let desiredTop = anchorCenterY - tipRect.height / 2;
       // Clamp vertically and leave a safe bottom margin for controls
       const minTop = 8;
-      const bottomSafe = 80; // leave room for footer controls
+      // Attempt to compute safe bottom area from page controls (timer) if present
+      let bottomSafe = 80; // default
+      try {
+        const timerEl = document.querySelector('.timer-controls') || document.querySelector('.inline-timer');
+        if (timerEl) {
+          const tRect = timerEl.getBoundingClientRect();
+          bottomSafe = Math.max(bottomSafe, Math.ceil(tRect.height) + 24);
+        }
+      } catch (e) {
+        // ignore
+      }
       const maxTop = viewportHeight - bottomSafe - tipRect.height;
       if (desiredTop < minTop) desiredTop = minTop;
       if (desiredTop > maxTop) desiredTop = maxTop;
@@ -419,6 +439,16 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
       if (arrowTop > maxTop) arrowTop = maxTop;
     }
 
+  // Decide arrow orientation based on final placement
+  let finalArrowClass = floatingClue.arrowClass || '';
+    if (floatingClue.type === 'col') {
+      // if tooltip is above anchor, arrow should point down, else up
+      finalArrowClass = (top < anchor.top) ? 'arrow-down' : 'arrow-up';
+    } else if (floatingClue.type === 'row') {
+      // if tooltip is to the left of anchor, arrow should point right, else left
+      finalArrowClass = (left + tipRect.width / 2 < anchor.left + anchor.width / 2) ? 'arrow-right' : 'arrow-left';
+    }
+
     // Update state to show the tooltip (measuring done)
     setFloatingClue(prev => ({
       ...prev,
@@ -427,7 +457,8 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
       transform: '',
       measuring: false,
       arrowLeft,
-      arrowTop
+      arrowTop,
+      arrowClass: finalArrowClass
     }));
   }, [floatingClue.show, floatingClue.measuring, floatingClue.anchorRect]);
 
