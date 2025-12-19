@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useLayoutEffect } from
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCrosswordGame } from '../../hooks/useCrosswordGame';
 import CrosswordCell from './CrosswordCell';
+import { useClue } from '../../context/ClueContext';
 
 const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: externalResetGame, className = '' }) => {
   const {
@@ -23,25 +24,63 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     resetTimer
   } = useCrosswordGame();
 
+  const {
+    visibleClueId,
+    persistentClueId,
+    openClueHover,
+    closeClueHover,
+    openClueUser,
+    closeClueUser
+  } = useClue();
+
   const gridRef = useRef(null);
   const scrollRef = useRef(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [cellRefs, setCellRefs] = useState({});
   const [hoveredCell, setHoveredCell] = useState({ row: -1, col: -1 });
   const [preferredDirection, setPreferredDirection] = useState('right');
-  const [activeClueId, setActiveClueId] = useState(null);
+  const lastCloseRef = useRef(0);
+  const lastKeypressRef = useRef(0);
 
-  // Centralized close helper (and debug logging)
+  // Helper to decide if hovering should open a clue. Blocks opens while user is typing
+  // (an input inside the grid has focus) and avoids immediate reopen after a close.
+  const canOpenClueOnHover = useCallback(() => {
+    // For hover behaviour we want it to be responsive: always allow opening on hover.
+    // If you want to debounce or block during typing, adjust this function.
+    return true;
+  }, []);
+
+  // Centralized close helper is provided by context; keep local helper for convenience
   const closeActiveClue = useCallback(() => {
-    // eslint-disable-next-line no-console
-    console.debug('closeActiveClue invoked', { activeClueId, stack: (new Error()).stack });
-    setActiveClueId(null);
-  }, [activeClueId]);
+    // prefer closing hover first; fallback to closing persistent
+    if (persistentClueId) {
+      closeClueUser({ force: true });
+    } else {
+      closeClueHover();
+    }
+    lastCloseRef.current = Date.now();
+  }, [persistentClueId, closeClueHover, closeClueUser]);
 
   useEffect(() => {
     // eslint-disable-next-line no-console
-    console.debug('activeClueId changed ->', activeClueId);
-  }, [activeClueId]);
+    console.debug('visibleClueId changed ->', visibleClueId);
+  }, [visibleClueId]);
+
+  // Close any open clue when focus moves to an input inside the grid (typing started)
+  useEffect(() => {
+    const onFocusIn = (e) => {
+      const target = e.target;
+      if (gridRef.current && gridRef.current.contains(target) && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        if (visibleClueId) {
+          closeActiveClue();
+          selectWord(null);
+          onWordSelect?.(null);
+        }
+      }
+    };
+    document.addEventListener('focusin', onFocusIn);
+    return () => document.removeEventListener('focusin', onFocusIn);
+  }, [visibleClueId, closeActiveClue, selectWord, onWordSelect]);
 
   // Track overflow for horizontal scrolling
   useEffect(() => {
@@ -98,7 +137,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
   // Handle click outside to close clue
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (activeClueId && gridRef.current && !gridRef.current.contains(event.target)) {
+      if (visibleClueId && gridRef.current && !gridRef.current.contains(event.target)) {
         closeActiveClue();
         selectWord(null);
         onWordSelect?.(null);
@@ -106,14 +145,14 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     };
 
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape' && activeClueId) {
+      if (event.key === 'Escape' && visibleClueId) {
         closeActiveClue();
         selectWord(null);
         onWordSelect?.(null);
       }
     };
 
-    if (activeClueId) {
+    if (visibleClueId) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('touchstart', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
@@ -124,7 +163,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
       document.removeEventListener('touchstart', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [activeClueId, selectWord, onWordSelect]);
+  }, [visibleClueId, selectWord, onWordSelect]);
 
   const handleResetTimer = () => {
     resetTimer();
@@ -255,8 +294,12 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     setHoveredCell({ row, col });
   };
 
-  const handleCellMouseLeave = () => {
+  const handleCellMouseLeave = (row, col) => {
     setHoveredCell({ row: -1, col: -1 });
+    const id = `cell-${row}-${col}`;
+    if (visibleClueId === id) {
+      closeActiveClue();
+    }
   };
 
   const isCellSelected = (row, col) => {
@@ -444,6 +487,15 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     );
   }
 
+  const handleHeaderHover = useCallback((kind, number) => {
+    const ok = canOpenClueOnHover() || (typeof window !== 'undefined' && window.__DEBUG_SHOW_HOVER);
+    // eslint-disable-next-line no-console
+    console.debug('[ClueHover] hovering', { kind, number, ok });
+    if (!ok) return;
+    const id = kind === 'col' ? `col-${number}` : `row-${number}`;
+    openClueHover(id);
+  }, [canOpenClueOnHover, openClueHover]);
+
   return (
     <motion.div
       ref={gridRef}
@@ -473,25 +525,26 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                     const colNumber = colIndex + 1;
                     const hasClue = puzzle.cluesVertical && puzzle.cluesVertical[colNumber];
                     const clueId = `col-${colNumber}`;
-                    const isActive = activeClueId === clueId;
+                    const isActive = visibleClueId === clueId;
                     
                     return (
-                      <div key={`col-head-${colIndex}`} className="clue-wrapper" style={{ position: 'relative', zIndex: isActive ? 9998 : undefined }}>
+                      <div
+                        key={`col-head-${colIndex}`}
+                        className="clue-wrapper"
+                        style={{ position: 'relative', zIndex: isActive ? 9998 : undefined }}
+                        onMouseEnter={() => (typeof handleHeaderHover === 'function' ? handleHeaderHover('col', colNumber) : null)}
+                        onMouseLeave={() => closeActiveClue()}
+                        onPointerEnter={() => (typeof handleHeaderHover === 'function' ? handleHeaderHover('col', colNumber) : null)}
+                        onPointerLeave={() => closeActiveClue()}
+                      >
                         <button
                           className={`clue-anchor flex items-center justify-center text-xs text-gray-700 bg-gray-100/40 rounded-sm p-1 h-8 w-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 border-2 transition-colors ${hasClue ? `cursor-pointer ${selectedWord && selectedWord.number === colNumber && selectedWord.direction === 'vertical' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'}` : 'border-gray-300 opacity-30 cursor-not-allowed'}`}
+                          aria-label={`Indice colonne ${colNumber}`}
                           onClick={() => {
                             if (!hasClue) return;
                             const word = { number: colNumber, startRow: 0, startCol: colIndex, length: numRows, direction: 'vertical', clue: puzzle.cluesVertical[colNumber] };
-                            setActiveClueId(prev => {
-                              if (prev === clueId) {
-                                selectWord(null);
-                                onWordSelect?.(null);
-                                return null;
-                              }
-                              selectWord(word, false);
-                              onWordSelect?.(word);
-                              return clueId;
-                            });
+                            selectWord(word, false);
+                            onWordSelect?.(word);
                           }}
                         >
                           <span className="col-number">{colNumber}</span>
@@ -501,7 +554,11 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                             clueId={clueId}
                             clue={puzzle.cluesVertical[colNumber]}
                             onClose={() => {
-                              closeActiveClue();
+                              if (persistentClueId === clueId) {
+                                closeClueUser({ force: true });
+                              } else {
+                                closeClueHover();
+                              }
                               selectWord(null);
                               onWordSelect?.(null);
                             }}
@@ -520,25 +577,26 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                     const rowNumber = rowIndex + 1;
                     const hasRowClue = puzzle.cluesHorizontal && puzzle.cluesHorizontal[rowNumber];
                     const clueId = `row-${rowNumber}`;
-                    const isActive = activeClueId === clueId;
+                    const isActive = visibleClueId === clueId;
                     
                     return (
-                      <div key={`row-head-${rowIndex}`} className="clue-wrapper" style={{ position: 'relative', zIndex: isActive ? 9998 : undefined }}>
+                      <div
+                        key={`row-head-${rowIndex}`}
+                        className="clue-wrapper"
+                        style={{ position: 'relative', zIndex: isActive ? 9998 : undefined }}
+                        onMouseEnter={() => (typeof handleHeaderHover === 'function' ? handleHeaderHover('row', rowNumber) : null)}
+                        onMouseLeave={() => closeActiveClue()}
+                        onPointerEnter={() => (typeof handleHeaderHover === 'function' ? handleHeaderHover('row', rowNumber) : null)}
+                        onPointerLeave={() => closeActiveClue()}
+                      >
                         <button
                           className={`clue-anchor flex items-center justify-center text-xs text-gray-700 bg-gray-100/40 rounded-sm p-1 h-8 w-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 border-2 transition-colors ${hasRowClue ? `cursor-pointer ${selectedWord && selectedWord.number === rowNumber && selectedWord.direction === 'horizontal' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'}` : 'border-gray-300 opacity-30 cursor-not-allowed'}`}
+                          aria-label={`Indice ligne ${rowNumber}`}
                           onClick={() => {
                             if (!hasRowClue) return;
                             const word = { number: rowNumber, startRow: rowIndex, startCol: 0, length: numCols, direction: 'horizontal', clue: puzzle.cluesHorizontal[rowNumber] };
-                            setActiveClueId(prev => {
-                              if (prev === clueId) {
-                                selectWord(null);
-                                onWordSelect?.(null);
-                                return null;
-                              }
-                              selectWord(word, false);
-                              onWordSelect?.(word);
-                              return clueId;
-                            });
+                            selectWord(word, false);
+                            onWordSelect?.(word);
                           }}
                         >
                           <span className="row-number">{hasRowClue ? rowNumber : ''}</span>
@@ -548,16 +606,20 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                             clueId={clueId}
                             clue={puzzle.cluesHorizontal[rowNumber]}
                             onClose={() => {
-                              closeActiveClue();
+                              if (persistentClueId === clueId) {
+                                closeClueUser({ force: true });
+                              } else {
+                                closeClueHover();
+                              }
                               selectWord(null);
                               onWordSelect?.(null);
                             }}
                           />
                         )}
                       </div>
-                    );
-                  })}
-                </div>
+                     );
+                   })}
+                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`, gap: '0.125rem' }}>
                   {Array.from({ length: numRows }).map((_, rowIndex) => {
@@ -581,9 +643,6 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                           selectedWord={selectedWord}
                           row={rowIndex}
                           col={colIndex}
-                          activeClueId={activeClueId}
-                          setActiveClueId={setActiveClueId}
-                          closeActiveClue={closeActiveClue}
                           getClueForNumber={(r, c) => {
                             const rowNumber = r + 1;
                             const colNumber = c + 1;
@@ -593,6 +652,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                             if (hasColClue) return puzzle.cluesVertical[colNumber];
                             return '';
                           }}
+                          canOpenClueOnHover={canOpenClueOnHover}
                           onClick={handleCellClick}
                           onNumberClick={(r, c) => {
                             const rowNumber = r + 1;
@@ -621,18 +681,18 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                             }
                           }}
                           onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
-                          onMouseLeave={handleCellMouseLeave}
+                          onMouseLeave={() => handleCellMouseLeave(rowIndex, colIndex)}
                           className={`${invalidInput ? 'animate-shake' : ''}`}
                         />
-                      );
-                    });
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+                       );
+                     });
+                   })}
+                 </div>
+               </div>
+             </div>
+           </div>
+         </div>
+       </div>
 
       {/* Timer Display */}
       <div className="text-center mt-4 space-y-3">
@@ -691,7 +751,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                 preferredDirection === 'up' 
                   ? 'bg-green-500 hover:bg-green-600 text-white' 
                   : 'bg-blue-500 hover:bg-blue-600 text-white'
-              }`}isPaused
+              }`}
               disabled={!selectedCell}
               title="Définir direction automatique: haut"
             >

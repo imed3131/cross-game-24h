@@ -11,6 +11,7 @@ import PuzzleList from '../components/player/PuzzleList';
 import CompletionCelebration from '../components/player/CompletionCelebration';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Button from '../components/common/Button';
+import { ClueProvider } from '../context/ClueContext';
 
 const PlayerPage = () => {
   const [showCelebration, setShowCelebration] = useState(false);
@@ -381,12 +382,14 @@ const PlayerPage = () => {
                 >
                   {/* Grid Card */}
                   <div className="player-grid-force-ltr">
-                    <CrosswordGrid
-                      puzzle={currentPuzzle}
-                      resetGame={resetGame}
-                      onCellSelect={() => {}}
-                      onWordSelect={selectWord}
-                    />
+                    <ClueProvider>
+                      <CrosswordGrid
+                        puzzle={currentPuzzle}
+                        resetGame={resetGame}
+                        onCellSelect={() => {}}
+                        onWordSelect={selectWord}
+                      />
+                    </ClueProvider>
                   </div>
                 </motion.div>
               </div>

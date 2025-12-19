@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useClue } from '../../context/ClueContext';
 
 const CrosswordCell = ({ 
   value = '', 
@@ -18,8 +19,9 @@ const CrosswordCell = ({
   onMouseLeave,
   language = 'FR',
   className = ''
-  , activeClueId, setActiveClueId, closeActiveClue, getClueForNumber
+  , getClueForNumber, canOpenClueOnHover
 }) => {
+  const { visibleClueId, persistentClueId, openClueHover, closeClueHover, closeClueUser } = useClue();
   const inputRef = useRef(null);
   const [inputValue, setInputValue] = useState(value);
 
@@ -160,19 +162,29 @@ const CrosswordCell = ({
           onClick={(e) => {
             e.stopPropagation();
             if (typeof onNumberClick === 'function') onNumberClick(row, col);
+          }}
+          onMouseEnter={(e) => {
+            e.stopPropagation();
+            const canOpen = typeof canOpenClueOnHover === 'function' ? (canOpenClueOnHover() || (typeof window !== 'undefined' && window.__DEBUG_SHOW_HOVER)) : true;
+            // eslint-disable-next-line no-console
+            console.debug('[ClueHover] cell hover', { row, col, canOpen });
+            if (!canOpen) return;
             const clueText = getClueForNumber ? getClueForNumber(row, col) : '';
             if (!clueText) return;
             const id = `cell-${row}-${col}`;
-            setActiveClueId(prev => prev === id ? null : id);
+            openClueHover(id);
           }}
           className="absolute top-0 left-0 text-xs leading-none p-0.5 text-gray-600 font-medium w-5 h-5 flex items-center justify-center rounded border border-blue-400 bg-white hover:bg-blue-50 transition-colors"
         >
           {cellNumber}
         </button>
         {/* inline clue for this cell number */}
-        {activeClueId === `cell-${row}-${col}` && (
+        {visibleClueId === `cell-${row}-${col}` && (
           <div data-visible="true" className={`floating-clue ${language === 'ar' ? 'rtl' : ''}`} style={{ top: 'calc(100% + 6px)', left: '0' }} onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()} onMouseOver={(e) => e.stopPropagation()} onFocus={(e) => e.stopPropagation()} onBlur={(e) => e.stopPropagation()}>
-            <button className="clue-close" onClick={() => closeActiveClue?.()} aria-label="Fermer" title="Fermer">
+            <button className="clue-close" onClick={() => {
+              const id = `cell-${row}-${col}`;
+              if (persistentClueId === id) closeClueUser({ force: true }); else closeClueHover();
+            }} aria-label="Fermer" title="Fermer">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><path d="M18 6L6 18" /><path d="M6 6l12 12" /></svg>
             </button>
             <div className={`clue-body ${language === 'ar' ? 'font-arabic' : ''}`}>{getClueForNumber ? getClueForNumber(row, col) : ''}</div>
