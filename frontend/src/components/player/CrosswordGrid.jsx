@@ -389,11 +389,13 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
   const ClueTooltip = ({ clueId, clue, buttonRef, onClose }) => {
     const [pos, setPos] = useState({ x: 0, y: 0, side: 'top', arrowOffset: 0 });
     const clueRef = useRef(null);
+    const posRef = useRef(null);
 
     useLayoutEffect(() => {
       if (!clueRef.current || !buttonRef || !buttonRef.current) return;
 
       const clueEl = clueRef.current;
+
       const compute = () => {
         const anchor = buttonRef.current;
         if (!anchor) return;
@@ -437,21 +439,22 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
         // Re-measure after applying constraints
         clueRect = clueEl.getBoundingClientRect();
 
-        // Calculate X (centered on anchor, clamped to viewport) and allow horizontal shifting to keep on-screen
+        // Calculate X (anchor-centric) and prefer staying near the anchor within maxShift
         const halfWidth = clueRect.width / 2;
         const minX = halfWidth + 8;
         const maxX = Math.max(minX, window.innerWidth - halfWidth - 8);
-        // Initial clamped position
-        let x = Math.min(maxX, Math.max(minX, anchorCenterX));
 
-        // Prevent large shifts away from the anchor so tooltip doesn't appear centered when it shouldn't
         const maxShift = 80; // px, adjust to taste
-        const shift = x - anchorCenterX;
-        if (Math.abs(shift) > maxShift) {
-          x = anchorCenterX + Math.sign(shift) * maxShift;
-          // ensure we still stay inside viewport
-          x = Math.min(maxX, Math.max(minX, x));
-        }
+        const desiredX = anchorCenterX;
+        const leftLimit = Math.max(minX, desiredX - maxShift);
+        const rightLimit = Math.min(maxX, desiredX + maxShift);
+
+        // Prefer to position tooltip centered over anchor, but clamp its left edge to the viewport so it never goes off-screen
+        let left = anchorCenterX - clueRect.width / 2;
+        const minLeft = 8;
+        const maxLeft = Math.max(minLeft, window.innerWidth - clueRect.width - 8);
+        left = Math.min(maxLeft, Math.max(minLeft, left));
+        let x = left + halfWidth;
 
         // Calculate Y: attach to top of anchor when possible
         let y;
@@ -485,18 +488,76 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
         if (arrowOffset < minOffset) arrowOffset = minOffset;
         if (arrowOffset > maxOffset) arrowOffset = maxOffset;
 
-        setPos({ x, y, side, arrowOffset, maxHeight });
+        // Ensure tooltip stays within viewport horizontally (snap to edge if necessary)
+        left = Math.min(window.innerWidth - clueRect.width - 8, Math.max(8, anchorCenterX - clueRect.width / 2));
+        const xFinal = left + halfWidth;
+        // Recompute arrow offset after horizontal clamp
+        arrowOffset = anchorCenterX - (xFinal - clueRect.width / 2);
+        if (arrowOffset < minOffset) arrowOffset = minOffset;
+        if (arrowOffset > maxOffset) arrowOffset = maxOffset;
+
+        posRef.current = { left, x: xFinal, y, side, arrowOffset, maxHeight };
+        setPos(posRef.current);
       };
 
-      // Compute immediately and on resize/scroll
+      // Lightweight scroll handler: only update vertical position and arrow offset to avoid horizontal jumps
+      const computeYOnly = () => {
+        const anchor = buttonRef.current;
+        if (!anchor || !clueRef.current) return;
+        const anchorRect = anchor.getBoundingClientRect();
+        const clueEl = clueRef.current;
+        let clueRect = clueEl.getBoundingClientRect();
+
+        const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+
+        // Recompute side preference but keep horizontal x fixed
+        const availableAbove = anchorRect.top;
+        const availableBelow = window.innerHeight - anchorRect.bottom;
+        let side = posRef.current && posRef.current.side ? posRef.current.side : 'top';
+
+        if (side === 'top') {
+          if (availableAbove >= clueRect.height + 16) {
+            side = 'top';
+          } else if (availableBelow >= clueRect.height + 16) {
+            side = 'bottom';
+          }
+        }
+
+        let y = side === 'top' ? anchorRect.top - 8 : anchorRect.bottom + 8;
+        if (side === 'top') {
+          const topEdge = y - clueRect.height;
+          if (topEdge < 8) {
+            if (availableBelow >= clueRect.height + 16) {
+              side = 'bottom';
+              y = anchorRect.bottom + 8;
+            } else {
+              y = clueRect.height + 8;
+            }
+          }
+        }
+
+        // Recompute arrow offset but keep horizontal left unchanged
+        const prevLeft = posRef.current ? posRef.current.left : (anchorCenterX - clueRect.width / 2);
+        let arrowOffset = anchorCenterX - prevLeft;
+        const minOffset = 8;
+        const maxOffset = Math.max(minOffset, clueRect.width - 8);
+        if (arrowOffset < minOffset) arrowOffset = minOffset;
+        if (arrowOffset > maxOffset) arrowOffset = maxOffset;
+
+        const newPos = { ...(posRef.current || {}), y, side, arrowOffset };
+        posRef.current = newPos;
+        setPos(newPos);
+      };
+
+      // Initial compute and listeners
       compute();
       window.addEventListener('resize', compute);
-      window.addEventListener('scroll', compute, true);
+      window.addEventListener('scroll', computeYOnly, true);
       return () => {
         window.removeEventListener('resize', compute);
-        window.removeEventListener('scroll', compute, true);
+        window.removeEventListener('scroll', computeYOnly, true);
       };
-    }, [clueId, buttonRef, language]);
+    }, [clueId]);
 
     // Nothing server-side
     if (typeof document === 'undefined') return null;
@@ -512,9 +573,9 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
         data-visible="true"
         style={{
           position: 'fixed',
-          left: `${pos.x}px`,
+          left: `${pos.left}px`,
           top: `${pos.y}px`,
-          transform: pos.side === 'top' ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
+          transform: pos.side === 'top' ? 'translateY(-100%)' : 'translateY(0)',
           zIndex: 9999,
           maxWidth: 'min(90vw, 520px)',
           maxHeight: pos.maxHeight ? `${pos.maxHeight}px` : undefined,
