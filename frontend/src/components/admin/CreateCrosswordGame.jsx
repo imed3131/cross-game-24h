@@ -810,8 +810,10 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
                     max="25"
                     value={gridSize.rows}
                     onChange={(e) => setGridSize(prev => ({ ...prev, rows: parseInt(e.target.value) || 15 }))}
-                    className="w-full p-2 border rounded-md"
+                    className={`w-full p-2 border rounded-md ${editPuzzleId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!!editPuzzleId}
                   />
+                  {editPuzzleId && <p className="text-xs text-gray-500 mt-1">Non modifiable en mode édition</p>}
                 </div>
                 
                 <div>
@@ -824,8 +826,10 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
                     max="25"
                     value={gridSize.cols}
                     onChange={(e) => setGridSize(prev => ({ ...prev, cols: parseInt(e.target.value) || 15 }))}
-                    className="w-full p-2 border rounded-md"
+                    className={`w-full p-2 border rounded-md ${editPuzzleId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!!editPuzzleId}
                   />
+                  {editPuzzleId && <p className="text-xs text-gray-500 mt-1">Non modifiable en mode édition</p>}
                 </div>
 
                 <div>
@@ -836,8 +840,10 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full p-2 border rounded-md"
+                    className={`w-full p-2 border rounded-md ${editPuzzleId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!!editPuzzleId}
                   />
+                  {editPuzzleId && <p className="text-xs text-gray-500 mt-1">Non modifiable en mode édition</p>}
                 </div>
 
                 <div>
@@ -878,19 +884,14 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full p-2 border rounded-md"
+                  className={`w-full p-2 border rounded-md ${editPuzzleId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!!editPuzzleId}
                 >
                   <option value="french">🇫🇷 Français (écriture de gauche à droite)</option>
                   <option value="arabic">🇸🇦 العربية (écriture de droite à gauche)</option>
                 </select>
-                {language === 'arabic' && (
-                  <p className="text-sm text-blue-600 mt-1">
-                    💡 Mode arabe: Les mots seront écrits de droite à gauche dans les cellules
-                  </p>
-                )}
+                {editPuzzleId && <p className="text-xs text-gray-500 mt-1">Non modifiable en mode édition</p>}
               </div>
-
-
 
               {/* Statistiques */}
               {words.across.length > 0 || words.down.length > 0 ? (
@@ -1079,8 +1080,6 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
             </div>
           </div>
         );
-
-
 
 
 
