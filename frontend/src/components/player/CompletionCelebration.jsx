@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from 'react-confetti';
 import { Trophy, Star, Clock, Target, Sparkles } from 'lucide-react';
 import Button from '../common/Button';
+import { useGameState } from '../../context/GameState';
+import { t } from '../../i18n';
 
 const CompletionCelebration = ({ 
   isVisible, 
@@ -44,29 +46,9 @@ const CompletionCelebration = ({
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const getText = (key) => {
-    const texts = {
-      FR: {
-        congratulations: 'Félicitations !',
-        puzzleSolved: 'Puzzle résolu avec succès !',
-        completedIn: 'Terminé en',
-        excellent: 'Excellent travail !',
-        playAgain: 'Rejouer',
-        close: 'Fermer',
-        achievement: 'Exploit débloqué !'
-      },
-      AR: {
-        congratulations: 'تهانينا !',
-        puzzleSolved: 'تم حل اللغز بنجاح !',
-        completedIn: 'أكمل في',
-        excellent: 'عمل ممتاز !',
-        playAgain: 'العب مرة أخرى',
-        close: 'إغلاق',
-        achievement: 'تم إلغاء قفل الإنجاز !'
-      }
-    };
-    return texts[language][key] || texts.FR[key];
-  };
+  const { state } = useGameState();
+  const siteLang = state?.language || language || 'FR';
+  const loc = (k) => t(k, siteLang);
 
   const celebrationVariants = {
     hidden: { 
@@ -215,7 +197,7 @@ const CompletionCelebration = ({
                 transition={{ delay: 0.4 }}
                 className="text-3xl font-bold text-gray-900 mb-2"
               >
-                {getText('congratulations')}
+                {loc('congratulations')}
               </motion.h1>
 
               <motion.p
@@ -224,7 +206,7 @@ const CompletionCelebration = ({
                 transition={{ delay: 0.5 }}
                 className="text-lg text-gray-600 mb-6"
               >
-                {getText('puzzleSolved')}
+                {loc('puzzle_solved')}
               </motion.p>
 
               {/* Stats */}
@@ -239,7 +221,7 @@ const CompletionCelebration = ({
                     <Clock className="w-6 h-6 text-primary-600" />
                     <div className="text-center">
                       <p className="text-sm text-gray-600 mb-1">
-                        {getText('completedIn')}
+                        {loc('completed_in')}
                       </p>
                       <p className="text-2xl font-bold text-primary-600">
                         {formatTime(completionTime)}
@@ -258,7 +240,7 @@ const CompletionCelebration = ({
               >
                 <Sparkles className="w-4 h-4" />
                 <span className="text-sm font-medium">
-                  {getText('achievement')}
+                  {loc('achievement')}
                 </span>
               </motion.div>
 
@@ -275,7 +257,7 @@ const CompletionCelebration = ({
                   onClick={onPlayAgain}
                   className="w-full"
                 >
-                  {getText('playAgain')}
+                  {loc('play_again')}
                 </Button>
                 
                 <Button
@@ -283,7 +265,7 @@ const CompletionCelebration = ({
                   onClick={onClose}
                   className="w-full"
                 >
-                  {getText('close')}
+                  {loc('close')}
                 </Button>
               </motion.div>
             </div>

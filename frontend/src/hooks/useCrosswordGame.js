@@ -25,11 +25,12 @@ export const useCrosswordGame = () => {
   const updateGridCell = useCallback((row, col, value) => {
     if (!state.currentGrid || !state.currentPuzzle) return;
 
-    // Validate language
-    if (value && !validateLanguage(value, state.language)) {
+    // Validate language using the puzzle's language preference if available
+    const puzzleLang = state.currentPuzzle && state.currentPuzzle.language ? state.currentPuzzle.language : state.language;
+    if (value && !validateLanguage(value, puzzleLang)) {
       setInvalidInput(true);
       toast.error(
-        state.language === 'FR' 
+        puzzleLang === 'FR' 
           ? 'Seules les lettres françaises sont autorisées'
           : 'فقط الأحرف العربية مسموحة'
       );

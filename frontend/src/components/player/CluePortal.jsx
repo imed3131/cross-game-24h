@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useGameState } from '../../context/GameState';
+import { t } from '../../i18n';
 
 export default function CluePortal({ activeClueId, puzzle, onClose }) {
   const content = useMemo(() => {
@@ -28,6 +30,10 @@ export default function CluePortal({ activeClueId, puzzle, onClose }) {
     const direction = kind === 'col' ? 'vertical' : 'horizontal';
     return { number, direction, clueText };
   }, [activeClueId, puzzle]);
+
+  const { state } = useGameState();
+  const siteLang = state?.language || 'FR';
+  const loc = (k) => t(k, siteLang);
 
   if (!activeClueId || !content) return null;
 
@@ -62,8 +68,8 @@ export default function CluePortal({ activeClueId, puzzle, onClose }) {
     <div style={overlayStyle} role="presentation" onClick={() => onClose?.()}>
       <div style={cardStyle} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div style={badgeStyle}>Indice {content.number} • {content.direction}</div>
-          <button aria-label="Fermer" onClick={() => onClose?.()} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 6 }}>
+          <div style={badgeStyle}>{loc('clue')} {content.number} • {content.direction}</div>
+          <button aria-label={loc('close')} onClick={() => onClose?.()} style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 6 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 6L6 18" /><path d="M6 6l12 12" />
             </svg>

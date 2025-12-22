@@ -1,4 +1,6 @@
 import React, { useMemo, useCallback, Suspense } from 'react';
+import { useGameState } from '../../context/GameState';
+import { t } from '../../i18n';
 import { transformPuzzleToReactCrossword } from '../../utils/transformPuzzle';
 import { useCrosswordGame } from '../../hooks/useCrosswordGame';
 import './ReactCrosswordWrapper.css';
@@ -49,6 +51,9 @@ const LazyCrossword = React.lazy(async () => {
 
 export default function ReactCrosswordWrapper({ puzzle, onCellSelect, onWordSelect, resetGame }) {
   const { getElapsedTime, pauseTimer, resumeTimer, isPaused, resetTimer } = useCrosswordGame();
+  const { state } = useGameState();
+  const siteLang = state?.language || 'FR';
+  const loc = (k) => t(k, siteLang);
 
   // Transform puzzle data to library format
   const data = useMemo(() => {
@@ -80,14 +85,13 @@ export default function ReactCrosswordWrapper({ puzzle, onCellSelect, onWordSele
     <div className="rcw-wrapper">
       {/* Header with puzzle info */}
       <div className="rcw-header">
-        <h3 className="rcw-title">{puzzle?.title || 'Puzzle du jour'}</h3>
+        <h3 className="rcw-title">{puzzle?.title || loc('puzzle_of_day')}</h3>
         <div className="rcw-meta">
           <span className="rcw-info">
-            Grille {puzzle?.rows || 0} × {puzzle?.cols || 0}
+            {loc('grid_label')} {puzzle?.rows || 0} × {puzzle?.cols || 0}
           </span>
           <span className="rcw-difficulty">
-            Difficulté: {puzzle?.difficulty === 'easy' ? 'Facile' : 
-                        puzzle?.difficulty === 'medium' ? 'Moyen' : 'Difficile'}
+            {loc('difficulty.' + (puzzle?.difficulty === 'easy' ? 'easy' : puzzle?.difficulty === 'medium' ? 'medium' : 'hard'))}
           </span>
         </div>
       </div>
@@ -101,22 +105,22 @@ export default function ReactCrosswordWrapper({ puzzle, onCellSelect, onWordSele
             <path d="M12 7V2m0 0L9 5m3-3 3 3"/>
           </svg>
           <span className={isPaused ? 'paused' : ''}>
-            Temps: {String(Math.floor(getElapsedTime() / 60)).padStart(2, '0')}:
+            {loc('time_label')}: {String(Math.floor(getElapsedTime() / 60)).padStart(2, '0')}:
             {String(getElapsedTime() % 60).padStart(2, '0')}
-            {isPaused && ' (Pause)'}
+            {isPaused && ` (${loc('pause_text')})`}
           </span>
         </div>
         <button 
           className="rcw-timer-btn" 
           onClick={() => isPaused ? resumeTimer() : pauseTimer()}
-          title={isPaused ? "Reprendre" : "Pause"}
+          title={isPaused ? loc('resume') : loc('pause')}
         >
           {isPaused ? '▶' : '⏸'}
         </button>
         <button 
           className="rcw-timer-btn" 
           onClick={resetTimer}
-          title="Réinitialiser le chrono"
+          title={loc('reset_timer')}
         >
           🔄
         </button>
@@ -127,7 +131,7 @@ export default function ReactCrosswordWrapper({ puzzle, onCellSelect, onWordSele
         <Suspense fallback={
           <div className="rcw-loading">
             <div className="spinner"></div>
-            <p>Chargement de la grille...</p>
+            <p>{loc('loading_grid')}</p>
           </div>
         }>
           <LazyCrossword
@@ -145,13 +149,13 @@ export default function ReactCrosswordWrapper({ puzzle, onCellSelect, onWordSele
         <button 
           className="rcw-btn rcw-btn-reset" 
           onClick={() => { 
-            if (window.confirm('Êtes-vous sûr de vouloir recommencer ?')) {
+            if (window.confirm(loc('restart_confirm'))) {
               resetGame?.(); 
               resetTimer?.(); 
             }
           }}
         >
-          🔄 Recommencer la partie
+          🔄 {loc('restart_game')}
         </button>
       </div>
     </div>

@@ -4,8 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCrosswordGame } from '../../hooks/useCrosswordGame';
 import CrosswordCell from './CrosswordCell';
 import { useClue } from '../../context/ClueContext';
+import { useGameState } from '../../context/GameState';
+import { t } from '../../i18n';
 
 const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: externalResetGame, className = '' }) => {
+  const { state: gameState } = useGameState ? useGameState() : { state: { language: 'FR' } };
+  const siteLang = gameState?.language || 'FR';
+  const loc = (k) => t(k, siteLang);
   const {
     currentGrid,
     selectedCell,
@@ -24,6 +29,16 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     resumeTimer,
     resetTimer
   } = useCrosswordGame();
+
+  // Normalize language values used in puzzle objects and UI (handles 'fr','FR','french','العربية', etc.)
+  const normalizeLang = (l) => {
+    if (!l) return '';
+    const s = String(l).trim();
+    const up = s.toUpperCase();
+    if (up === 'FR' || up.startsWith('F') || up === 'FRENCH' || up === 'FRANCAIS' || up === 'FRANÇAIS') return 'FR';
+    if (up === 'AR' || up.startsWith('A') || up === 'ARABIC' || s === 'العربية') return 'AR';
+    return up;
+  };
 
   const {
     visibleClueId,
@@ -565,11 +580,22 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     const arrowClassMap = { top: 'arrow-down', bottom: 'arrow-up', left: 'arrow-right', right: 'arrow-left' };
     const arrowClass = arrowClassMap[pos.side] || 'arrow-down';
     const clueNumber = clueId.startsWith('col-') ? clueId.split('-')[1] : clueId.split('-')[1];
+    // Normalize language codes (accept FR, fr, french, العربية, arabic, etc.)
+    const normalizeLang = (l) => {
+      if (!l) return '';
+      const s = String(l).trim();
+      const up = s.toUpperCase();
+      if (up === 'FR' || up.startsWith('F') || up === 'FRENCH' || up === 'FRANCAIS' || up === 'FRANÇAIS') return 'FR';
+      if (up === 'AR' || up.startsWith('A') || up === 'ARABIC' || s === 'العربية') return 'AR';
+      return up;
+    };
+    const clueLang = normalizeLang(puzzle && puzzle.language ? puzzle.language : language);
 
     return createPortal(
       <div
         ref={clueRef}
-        className={`floating-clue ${arrowClass} ${language === 'ar' ? 'rtl' : ''}`}
+        className={`floating-clue ${arrowClass} ${clueLang === 'AR' ? 'rtl' : ''}`}
+        dir={clueLang === 'AR' ? 'rtl' : 'ltr'}
         data-visible="true"
         style={{
           position: 'fixed',
@@ -593,16 +619,16 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
         <button
           className="clue-close"
           onClick={onClose}
-          aria-label="Fermer"
-          title="Fermer"
+          aria-label={loc('close')}
+          title={loc('close')}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 6L6 18" /><path d="M6 6l12 12" />
           </svg>
         </button>
         <div>
-          <div className="clue-badge">Indice {clueNumber}</div>
-          <div className={`clue-body ${language === 'ar' ? 'font-arabic' : ''}`}>{clue}</div>
+          <div className="clue-badge">{loc('clue')} {clueNumber}</div>
+          <div className={`clue-body ${clueLang === 'AR' ? 'font-arabic' : ''}`}>{clue}</div>
         </div>
       </div>,
       document.body
@@ -623,7 +649,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     const ss = String(time % 60).padStart(2, '0');
     return (
       <span className={`text-sm font-medium ${isPaused ? 'text-orange-600' : 'text-gray-700'}`}>
-        Temps: {mm}:{ss} {isPaused && '(Pause)'}
+        {loc('time_label')}: {mm}:{ss} {isPaused && `(${loc('pause_text')})`}
       </span>
     );
   };
@@ -643,7 +669,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
   if (!puzzle) {
     return (
       <div className="grid gap-1 p-4 bg-white rounded-2xl shadow-lg">
-        <p className="text-gray-500">Aucune grille chargée</p>
+        <p className="text-gray-500">{loc('loading_grid')}</p>
       </div>
     );
   }
@@ -657,6 +683,9 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     openClueHover(id);
   }, [canOpenClueOnHover, openClueHover]);
 
+  // Normalized puzzle language for header and UI
+  const puzzleLang = normalizeLang(puzzle && puzzle.language ? puzzle.language : language);
+
   return (
     <motion.div
       ref={gridRef}
@@ -669,9 +698,13 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
       <div className="mb-4">
         <h3 className="text-base sm:text-lg font-bold text-center mb-1 sm:mb-2">{puzzle.title}</h3>
         <div className="text-xs sm:text-sm text-gray-600 text-center">
-          <span>Grille {numRows} × {numCols}</span>
-          <span className="ml-4">Difficulté: {puzzle.difficulty === 'easy' ? 'Facile' : puzzle.difficulty === 'medium' ? 'Moyen' : 'Difficile'}</span>
+          <span>{loc('grid_label')} {numRows} × {numCols}</span>
+          <span className="mr-2">| الصعوبة : </span>
+          <span className="ml-2">{loc(`difficulty.${puzzle.difficulty === 'easy' ? 'easy' : puzzle.difficulty === 'medium' ? 'medium' : 'hard'}`)}</span>
+          <span className="mr-1">| اللغة : </span>
+          <span className="ml-4 font-semibold">{puzzleLang === 'FR' ? loc('french') : puzzleLang === 'AR' ? loc('arabic') : puzzle.language}</span>
         </div>
+
       </div>
 
       <div className="flex justify-center mb-4">
@@ -680,189 +713,335 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
             <div className="player-grid-force-ltr" dir="ltr" style={{ direction: 'ltr', width: 'max-content' }}>
               {/* Top header row */}
               <div className="flex items-center">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12" />
+                { /* Render blank corner either left or right depending on puzzleLang */ }
+                {puzzleLang !== 'AR' && (
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12" />
+                )}
+
+                {/* Column headers — reverse order for Arabic (render right-to-left numbering) */}
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`, gap: '0.125rem' }}>
-                  {Array.from({ length: numCols }).map((_, colIndex) => {
-                    const colNumber = colIndex + 1;
-                    const hasClue = puzzle.cluesVertical && puzzle.cluesVertical[colNumber];
-                    const clueId = `col-${colNumber}`;
-                    const isActive = visibleClueId === clueId;
-                    
-                    return (
-                      <div
-                        key={`col-head-${colIndex}`}
-                        className="clue-wrapper"
-                        style={{ position: 'relative', zIndex: isActive ? 9998 : undefined }}
-                        onMouseEnter={() => (!isTouchDevice && typeof handleHeaderHover === 'function' ? handleHeaderHover('col', colNumber) : null)}
-                        onMouseLeave={() => { if (!isTouchDevice) closeActiveClue(); }}
-                        onPointerEnter={() => (!isTouchDevice && typeof handleHeaderHover === 'function' ? handleHeaderHover('col', colNumber) : null)}
-                        onPointerLeave={() => { if (!isTouchDevice) closeActiveClue(); }}
-                      >
-                        <button
-                          ref={(el) => { anchorRefs.current[clueId] = el; }}
-                          className={`clue-anchor flex items-center justify-center text-xs text-gray-700 bg-gray-100/40 rounded-sm p-1 h-8 w-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 border-2 transition-colors ${hasClue ? `cursor-pointer ${isTouchDevice ? (selectedWord && selectedWord.number === colNumber && selectedWord.direction === 'vertical' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50') : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700'}` : 'border-gray-300 opacity-30 cursor-not-allowed'}`}
-                          aria-label={`Indice colonne ${colNumber}`}
-                          aria-expanded={isActive}
-                          onClick={() => {
-                            if (!hasClue) return;
-                            const word = { number: colNumber, startRow: 0, startCol: colIndex, length: numRows, direction: 'vertical', clue: puzzle.cluesVertical[colNumber] };
-                            selectWord(word, false);
-                            onWordSelect?.(word);
-                            // On touch devices open the clue on tap (instead of hover)
-                            if (isTouchDevice) openClueUser(clueId);
-                          }}
+                  {(() => {
+                    const indices = Array.from({ length: numCols }).map((_, i) => i);
+                    const renderOrder = puzzleLang === 'AR' ? indices.slice().reverse() : indices;
+                    return renderOrder.map((colIndex) => {
+                      const colNumber = colIndex + 1; // display number (1..numCols)
+                      const hasClue = puzzle.cluesVertical && puzzle.cluesVertical[colNumber];
+                      const clueId = `col-${colNumber}`;
+                      const isActive = visibleClueId === clueId;
+
+                      return (
+                        <div
+                          key={`col-head-${colIndex}`}
+                          className="clue-wrapper"
+                          style={{ position: 'relative', zIndex: isActive ? 9998 : undefined }}
+                          onMouseEnter={() => (!isTouchDevice && typeof handleHeaderHover === 'function' ? handleHeaderHover('col', colNumber) : null)}
+                          onMouseLeave={() => { if (!isTouchDevice) closeActiveClue(); }}
+                          onPointerEnter={() => (!isTouchDevice && typeof handleHeaderHover === 'function' ? handleHeaderHover('col', colNumber) : null)}
+                          onPointerLeave={() => { if (!isTouchDevice) closeActiveClue(); }}
                         >
-                          <span className="col-number">{colNumber}</span>
-                        </button>
-                        {isActive && hasClue && (
-                          <ClueTooltip 
-                            clueId={clueId}
-                            clue={puzzle.cluesVertical[colNumber]}
-                            buttonRef={{ current: anchorRefs.current[clueId] }}
-                            onClose={() => {
-                              if (persistentClueId === clueId) {
-                                closeClueUser({ force: true });
-                              } else {
-                                closeClueHover();
-                              }
-                              selectWord(null);
-                              onWordSelect?.(null);
+                          <button
+                            ref={(el) => { anchorRefs.current[clueId] = el; }}
+                            className={`clue-anchor flex items-center justify-center text-xs text-gray-700 bg-gray-100/40 rounded-sm p-1 h-8 w-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 border-2 transition-colors ${hasClue ? `cursor-pointer ${isTouchDevice ? (selectedWord && selectedWord.number === colNumber && selectedWord.direction === 'vertical' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50') : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700'}` : 'border-gray-300 opacity-30 cursor-not-allowed'}`}
+                            aria-label={`${loc('clue')} ${loc('column')} ${colNumber}`}
+                            aria-expanded={isActive}
+                            onClick={() => {
+                              if (!hasClue) return;
+                              const word = { number: colNumber, startRow: 0, startCol: colIndex, length: numRows, direction: 'vertical', clue: puzzle.cluesVertical[colNumber] };
+                              selectWord(word, false);
+                              onWordSelect?.(word);
+                              // On touch devices open the clue on tap (instead of hover)
+                              if (isTouchDevice) openClueUser(clueId);
                             }}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
+                          >
+                            <span className="col-number">{colNumber}</span>
+                          </button>
+                          {isActive && hasClue && (
+                            <ClueTooltip 
+                              clueId={clueId}
+                              clue={puzzle.cluesVertical[colNumber]}
+                              buttonRef={{ current: anchorRefs.current[clueId] }}
+                              onClose={() => {
+                                if (persistentClueId === clueId) {
+                                  closeClueUser({ force: true });
+                                } else {
+                                  closeClueHover();
+                                }
+                                selectWord(null);
+                                onWordSelect?.(null);
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
+
+                {puzzleLang === 'AR' && (
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12" />
+                )}
               </div>
 
               {/* Body row: row headers + cells */}
               <div style={{ display: 'flex' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
-                  {Array.from({ length: numRows }).map((_, rowIndex) => {
-                    const rowNumber = rowIndex + 1;
-                    const hasRowClue = puzzle.cluesHorizontal && puzzle.cluesHorizontal[rowNumber];
-                    const clueId = `row-${rowNumber}`;
-                    const isActive = visibleClueId === clueId;
-                    
-                    return (
-                      <div
-                        key={`row-head-${rowIndex}`}
-                        className="clue-wrapper"
-                        style={{ position: 'relative', zIndex: isActive ? 9998 : undefined }}
-                        onMouseEnter={() => (!isTouchDevice && typeof handleHeaderHover === 'function' ? handleHeaderHover('row', rowNumber) : null)}
-                        onMouseLeave={() => { if (!isTouchDevice) closeActiveClue(); }}
-                        onPointerEnter={() => (!isTouchDevice && typeof handleHeaderHover === 'function' ? handleHeaderHover('row', rowNumber) : null)}
-                        onPointerLeave={() => { if (!isTouchDevice) closeActiveClue(); }}
-                      >
-                        <button
-                          ref={(el) => { anchorRefs.current[clueId] = el; }}
-                          className={`clue-anchor flex items-center justify-center text-xs text-gray-700 bg-gray-100/40 rounded-sm p-1 h-8 w-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 border-2 transition-colors ${hasRowClue ? `cursor-pointer ${isTouchDevice ? (selectedWord && selectedWord.number === rowNumber && selectedWord.direction === 'horizontal' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50') : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700'}` : 'border-gray-300 opacity-30 cursor-not-allowed'}`}
-                          aria-label={`Indice ligne ${rowNumber}`}
-                          aria-expanded={isActive}
-                          onClick={() => {
-                            if (!hasRowClue) return;
-                            const word = { number: rowNumber, startRow: rowIndex, startCol: 0, length: numCols, direction: 'horizontal', clue: puzzle.cluesHorizontal[rowNumber] };
-                            selectWord(word, false);
-                            onWordSelect?.(word);
-                            // On touch devices open the clue on tap (instead of hover)
-                            if (isTouchDevice) openClueUser(clueId);
-                          }}
-                        >
-                          <span className="row-number">{hasRowClue ? rowNumber : ''}</span>
-                        </button>
-                        {isActive && hasRowClue && (
-                          <ClueTooltip 
-                            clueId={clueId}
-                            clue={puzzle.cluesHorizontal[rowNumber]}
-                            buttonRef={{ current: anchorRefs.current[clueId] }}
-                            onClose={() => {
-                              if (persistentClueId === clueId) {
-                                closeClueUser({ force: true });
-                              } else {
-                                closeClueHover();
-                              }
-                              selectWord(null);
-                              onWordSelect?.(null);
-                            }}
-                          />
-                        )}
-                      </div>
-                     );
-                   })}
-                 </div>
+                {puzzleLang === 'AR' ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`, gap: '0.125rem' }}>
+                      {Array.from({ length: numRows }).map((_, rowIndex) => {
+                        return Array.from({ length: numCols }).map((_, colIndex) => {
+                          const cell = currentGrid?.[rowIndex]?.[colIndex] || '';
+                          const isBlackCell = puzzle.solution?.[rowIndex]?.[colIndex] === '' || puzzle.solution?.[rowIndex]?.[colIndex] === '#';
+                          const isSelected = isCellSelected(rowIndex, colIndex);
+                          const cellNumber = getCellNumber(rowIndex, colIndex);
+                          const cellKey = `${rowIndex}-${colIndex}`;
+                          return (
+                            <CrosswordCell
+                              key={cellKey}
+                              value={cell || ''}
+                              onChange={handleCellChange}
+                              onNavigate={handleCellNavigation}
+                              isSelected={isSelected}
+                              isHovered={isCellHovered(rowIndex, colIndex)}
+                              isBlackCell={isBlackCell}
+                              // Pass the normalized puzzle language to the cell so validation and clue direction are puzzle-specific
+                              language={normalizeLang(puzzle && puzzle.language ? puzzle.language : language)}
+                              cellNumber={null}
+                              selectedWord={selectedWord}
+                              isTouchDevice={isTouchDevice}
+                              row={rowIndex}
+                              col={colIndex}
+                              getClueForNumber={(r, c) => {
+                                const rowNumber = r + 1;
+                                const colNumber = c + 1;
+                                const hasRowClue = puzzle.cluesHorizontal && puzzle.cluesHorizontal[rowNumber];
+                                const hasColClue = puzzle.cluesVertical && puzzle.cluesVertical[colNumber];
+                                if (hasRowClue && (!hasColClue || c === 0)) return puzzle.cluesHorizontal[rowNumber];
+                                if (hasColClue) return puzzle.cluesVertical[colNumber];
+                                return '';
+                              }}
+                              canOpenClueOnHover={canOpenClueOnHover}
+                              onClick={handleCellClick}
+                              onNumberClick={(r, c) => {
+                                const rowNumber = r + 1;
+                                const colNumber = c + 1;
+                                const hasRowClue = puzzle.cluesHorizontal && puzzle.cluesHorizontal[rowNumber];
+                                const hasColClue = puzzle.cluesVertical && puzzle.cluesVertical[colNumber];
 
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`, gap: '0.125rem' }}>
-                  {Array.from({ length: numRows }).map((_, rowIndex) => {
-                    return Array.from({ length: numCols }).map((_, colIndex) => {
-                      const cell = currentGrid?.[rowIndex]?.[colIndex] || '';
-                      const isBlackCell = puzzle.solution?.[rowIndex]?.[colIndex] === '' || puzzle.solution?.[rowIndex]?.[colIndex] === '#';
-                      const isSelected = isCellSelected(rowIndex, colIndex);
-                      const cellNumber = getCellNumber(rowIndex, colIndex);
-                      const cellKey = `${rowIndex}-${colIndex}`;
-                      return (
-                        <CrosswordCell
-                          key={cellKey}
-                          value={cell || ''}
-                          onChange={handleCellChange}
-                          onNavigate={handleCellNavigation}
-                          isSelected={isSelected}
-                          isHovered={isCellHovered(rowIndex, colIndex)}
-                          isBlackCell={isBlackCell}
-                          language={language}
-                          cellNumber={null}
-                          selectedWord={selectedWord}
-                          isTouchDevice={isTouchDevice}
-                          row={rowIndex}
-                          col={colIndex}
-                          getClueForNumber={(r, c) => {
-                            const rowNumber = r + 1;
-                            const colNumber = c + 1;
-                            const hasRowClue = puzzle.cluesHorizontal && puzzle.cluesHorizontal[rowNumber];
-                            const hasColClue = puzzle.cluesVertical && puzzle.cluesVertical[colNumber];
-                            if (hasRowClue && (!hasColClue || c === 0)) return puzzle.cluesHorizontal[rowNumber];
-                            if (hasColClue) return puzzle.cluesVertical[colNumber];
-                            return '';
-                          }}
-                          canOpenClueOnHover={canOpenClueOnHover}
-                          onClick={handleCellClick}
-                          onNumberClick={(r, c) => {
-                            const rowNumber = r + 1;
-                            const colNumber = c + 1;
-                            const hasRowClue = puzzle.cluesHorizontal && puzzle.cluesHorizontal[rowNumber];
-                            const hasColClue = puzzle.cluesVertical && puzzle.cluesVertical[colNumber];
+                                if (hasRowClue && (!hasColClue || c === 0)) {
+                                  const word = { number: rowNumber, startRow: r, startCol: 0, length: puzzle.cols || (currentGrid?.[r]?.length || 0), direction: 'horizontal', clue: puzzle.cluesHorizontal[rowNumber] };
+                                  if (selectedWord && selectedWord.number === word.number && selectedWord.direction === 'horizontal') {
+                                    selectWord(null);
+                                    onWordSelect?.(null);
+                                  } else {
+                                    selectWord(word);
+                                    onWordSelect?.(word);
+                                  }
+                                  if (isTouchDevice) openClueUser(`row-${rowNumber}`);
+                                } else if (hasColClue) {
+                                  const word = { number: colNumber, startRow: 0, startCol: c, length: puzzle.rows || (currentGrid?.length || 0), direction: 'vertical', clue: puzzle.cluesVertical[colNumber] };
+                                  if (selectedWord && selectedWord.number === word.number && selectedWord.direction === 'vertical') {
+                                    selectWord(null);
+                                    onWordSelect?.(null);
+                                  } else {
+                                    selectWord(word);
+                                    onWordSelect?.(word);
+                                  }
+                                  if (isTouchDevice) openClueUser(`col-${colNumber}`);
+                                }
+                              }}
+                              onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
+                              onMouseLeave={() => handleCellMouseLeave(rowIndex, colIndex)}
+                              className={`${invalidInput ? 'animate-shake' : ''}`}
+                            />
+                           );
+                         });
+                       })}
+                    </div>
 
-                            if (hasRowClue && (!hasColClue || c === 0)) {
-                              const word = { number: rowNumber, startRow: r, startCol: 0, length: puzzle.cols || (currentGrid?.[r]?.length || 0), direction: 'horizontal', clue: puzzle.cluesHorizontal[rowNumber] };
-                              if (selectedWord && selectedWord.number === word.number && selectedWord.direction === 'horizontal') {
-                                selectWord(null);
-                                onWordSelect?.(null);
-                              } else {
-                                selectWord(word);
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                      {Array.from({ length: numRows }).map((_, rowIndex) => {
+                        const rowNumber = rowIndex + 1;
+                        const hasRowClue = puzzle.cluesHorizontal && puzzle.cluesHorizontal[rowNumber];
+                        const clueId = `row-${rowNumber}`;
+                        const isActive = visibleClueId === clueId;
+
+                        return (
+                          <div
+                            key={`row-head-${rowIndex}`}
+                            className="clue-wrapper"
+                            style={{ position: 'relative', zIndex: isActive ? 9998 : undefined }}
+                            onMouseEnter={() => (!isTouchDevice && typeof handleHeaderHover === 'function' ? handleHeaderHover('row', rowNumber) : null)}
+                            onMouseLeave={() => { if (!isTouchDevice) closeActiveClue(); }}
+                            onPointerEnter={() => (!isTouchDevice && typeof handleHeaderHover === 'function' ? handleHeaderHover('row', rowNumber) : null)}
+                            onPointerLeave={() => { if (!isTouchDevice) closeActiveClue(); }}
+                          >
+                            <button
+                              ref={(el) => { anchorRefs.current[clueId] = el; }}
+                              className={`clue-anchor flex items-center justify-center text-xs text-gray-700 bg-gray-100/40 rounded-sm p-1 h-8 w-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 border-2 transition-colors ${hasRowClue ? `cursor-pointer ${isTouchDevice ? (selectedWord && selectedWord.number === rowNumber && selectedWord.direction === 'horizontal' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50') : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700'}` : 'border-gray-300 opacity-30 cursor-not-allowed'}`}
+                              aria-label={`${loc('clue')} ${loc('row')} ${rowNumber}`}
+                              aria-expanded={isActive}
+                              onClick={() => {
+                                if (!hasRowClue) return;
+                                const word = { number: rowNumber, startRow: rowIndex, startCol: 0, length: numCols, direction: 'horizontal', clue: puzzle.cluesHorizontal[rowNumber] };
+                                selectWord(word, false);
                                 onWordSelect?.(word);
-                              }
-                              if (isTouchDevice) openClueUser(`row-${rowNumber}`);
-                            } else if (hasColClue) {
-                              const word = { number: colNumber, startRow: 0, startCol: c, length: puzzle.rows || (currentGrid?.length || 0), direction: 'vertical', clue: puzzle.cluesVertical[colNumber] };
-                              if (selectedWord && selectedWord.number === word.number && selectedWord.direction === 'vertical') {
-                                selectWord(null);
-                                onWordSelect?.(null);
-                              } else {
-                                selectWord(word);
+                                // On touch devices open the clue on tap (instead of hover)
+                                if (isTouchDevice) openClueUser(clueId);
+                              }}
+                            >
+                              <span className="row-number">{hasRowClue ? rowNumber : ''}</span>
+                            </button>
+                            {isActive && hasRowClue && (
+                              <ClueTooltip 
+                                clueId={clueId}
+                                clue={puzzle.cluesHorizontal[rowNumber]}
+                                buttonRef={{ current: anchorRefs.current[clueId] }}
+                                onClose={() => {
+                                  if (persistentClueId === clueId) {
+                                    closeClueUser({ force: true });
+                                  } else {
+                                    closeClueHover();
+                                  }
+                                  selectWord(null);
+                                  onWordSelect?.(null);
+                                }}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.125rem' }}>
+                      {Array.from({ length: numRows }).map((_, rowIndex) => {
+                        const rowNumber = rowIndex + 1;
+                        const hasRowClue = puzzle.cluesHorizontal && puzzle.cluesHorizontal[rowNumber];
+                        const clueId = `row-${rowNumber}`;
+                        const isActive = visibleClueId === clueId;
+                        
+                        return (
+                          <div
+                            key={`row-head-${rowIndex}`}
+                            className="clue-wrapper"
+                            style={{ position: 'relative', zIndex: isActive ? 9998 : undefined }}
+                            onMouseEnter={() => (!isTouchDevice && typeof handleHeaderHover === 'function' ? handleHeaderHover('row', rowNumber) : null)}
+                            onMouseLeave={() => { if (!isTouchDevice) closeActiveClue(); }}
+                            onPointerEnter={() => (!isTouchDevice && typeof handleHeaderHover === 'function' ? handleHeaderHover('row', rowNumber) : null)}
+                            onPointerLeave={() => { if (!isTouchDevice) closeActiveClue(); }}
+                          >
+                            <button
+                              ref={(el) => { anchorRefs.current[clueId] = el; }}
+                              className={`clue-anchor flex items-center justify-center text-xs text-gray-700 bg-gray-100/40 rounded-sm p-1 h-8 w-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 border-2 transition-colors ${hasRowClue ? `cursor-pointer ${isTouchDevice ? (selectedWord && selectedWord.number === rowNumber && selectedWord.direction === 'horizontal' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50') : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700'}` : 'border-gray-300 opacity-30 cursor-not-allowed'}`}
+                              aria-label={`${loc('clue')} ${loc('row')} ${rowNumber}`}
+                              aria-expanded={isActive}
+                              onClick={() => {
+                                if (!hasRowClue) return;
+                                const word = { number: rowNumber, startRow: rowIndex, startCol: 0, length: numCols, direction: 'horizontal', clue: puzzle.cluesHorizontal[rowNumber] };
+                                selectWord(word, false);
                                 onWordSelect?.(word);
-                              }
-                              if (isTouchDevice) openClueUser(`col-${colNumber}`);
-                            }
-                          }}
-                          onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
-                          onMouseLeave={() => handleCellMouseLeave(rowIndex, colIndex)}
-                          className={`${invalidInput ? 'animate-shake' : ''}`}
-                        />
-                       );
-                     });
-                   })}
-                 </div>
-               </div>
+                                // On touch devices open the clue on tap (instead of hover)
+                                if (isTouchDevice) openClueUser(clueId);
+                              }}
+                            >
+                              <span className="row-number">{hasRowClue ? rowNumber : ''}</span>
+                            </button>
+                            {isActive && hasRowClue && (
+                              <ClueTooltip 
+                                clueId={clueId}
+                                clue={puzzle.cluesHorizontal[rowNumber]}
+                                buttonRef={{ current: anchorRefs.current[clueId] }}
+                                onClose={() => {
+                                  if (persistentClueId === clueId) {
+                                    closeClueUser({ force: true });
+                                  } else {
+                                    closeClueHover();
+                                  }
+                                  selectWord(null);
+                                  onWordSelect?.(null);
+                                }}
+                              />
+                            )}
+                          </div>
+                         );
+                       })}
+                     </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`, gap: '0.125rem' }}>
+                      {Array.from({ length: numRows }).map((_, rowIndex) => {
+                        return Array.from({ length: numCols }).map((_, colIndex) => {
+                          const cell = currentGrid?.[rowIndex]?.[colIndex] || '';
+                          const isBlackCell = puzzle.solution?.[rowIndex]?.[colIndex] === '' || puzzle.solution?.[rowIndex]?.[colIndex] === '#';
+                          const isSelected = isCellSelected(rowIndex, colIndex);
+                          const cellNumber = getCellNumber(rowIndex, colIndex);
+                          const cellKey = `${rowIndex}-${colIndex}`;
+                          return (
+                            <CrosswordCell
+                              key={cellKey}
+                              value={cell || ''}
+                              onChange={handleCellChange}
+                              onNavigate={handleCellNavigation}
+                              isSelected={isSelected}
+                              isHovered={isCellHovered(rowIndex, colIndex)}
+                              isBlackCell={isBlackCell}
+                              // Pass the normalized puzzle language to the cell so validation and clue direction are puzzle-specific
+                              language={normalizeLang(puzzle && puzzle.language ? puzzle.language : language)}
+                              cellNumber={null}
+                              selectedWord={selectedWord}
+                              isTouchDevice={isTouchDevice}
+                              row={rowIndex}
+                              col={colIndex}
+                              getClueForNumber={(r, c) => {
+                                const rowNumber = r + 1;
+                                const colNumber = c + 1;
+                                const hasRowClue = puzzle.cluesHorizontal && puzzle.cluesHorizontal[rowNumber];
+                                const hasColClue = puzzle.cluesVertical && puzzle.cluesVertical[colNumber];
+                                if (hasRowClue && (!hasColClue || c === 0)) return puzzle.cluesHorizontal[rowNumber];
+                                if (hasColClue) return puzzle.cluesVertical[colNumber];
+                                return '';
+                              }}
+                              canOpenClueOnHover={canOpenClueOnHover}
+                              onClick={handleCellClick}
+                              onNumberClick={(r, c) => {
+                                const rowNumber = r + 1;
+                                const colNumber = c + 1;
+                                const hasRowClue = puzzle.cluesHorizontal && puzzle.cluesHorizontal[rowNumber];
+                                const hasColClue = puzzle.cluesVertical && puzzle.cluesVertical[colNumber];
+
+                                if (hasRowClue && (!hasColClue || c === 0)) {
+                                  const word = { number: rowNumber, startRow: r, startCol: 0, length: puzzle.cols || (currentGrid?.[r]?.length || 0), direction: 'horizontal', clue: puzzle.cluesHorizontal[rowNumber] };
+                                  if (selectedWord && selectedWord.number === word.number && selectedWord.direction === 'horizontal') {
+                                    selectWord(null);
+                                    onWordSelect?.(null);
+                                  } else {
+                                    selectWord(word);
+                                    onWordSelect?.(word);
+                                  }
+                                  if (isTouchDevice) openClueUser(`row-${rowNumber}`);
+                                } else if (hasColClue) {
+                                  const word = { number: colNumber, startRow: 0, startCol: c, length: puzzle.rows || (currentGrid?.length || 0), direction: 'vertical', clue: puzzle.cluesVertical[colNumber] };
+                                  if (selectedWord && selectedWord.number === word.number && selectedWord.direction === 'vertical') {
+                                    selectWord(null);
+                                    onWordSelect?.(null);
+                                  } else {
+                                    selectWord(word);
+                                    onWordSelect?.(word);
+                                  }
+                                  if (isTouchDevice) openClueUser(`col-${colNumber}`);
+                                }
+                              }}
+                              onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
+                              onMouseLeave={() => handleCellMouseLeave(rowIndex, colIndex)}
+                              className={`${invalidInput ? 'animate-shake' : ''}`}
+                            />
+                           );
+                         });
+                       })}
+                     </div>
+                  </>
+                )}
+              </div>
              </div>
            </div>
          </div>
@@ -874,7 +1053,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
           <button
             onClick={() => isPaused ? resumeTimer() : pauseTimer()}
             className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-            title={isPaused ? "Reprendre" : "Pause"}
+            title={isPaused ? loc('resume') : loc('pause')}
           >
             {isPaused ? (
               <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -893,7 +1072,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
           <button
             onClick={handleResetTimer}
             className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-            title="Remettre à zéro le chrono"
+            title={loc('reset_timer')}
           >
             <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -911,8 +1090,8 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
         
         {/* Navigation Controls */}
         <div className="flex flex-col items-center gap-2">
-          <div className="text-xs text-gray-600 font-medium">Direction automatique</div>
-          <div className="text-xs text-gray-500 text-center">Cliquez pour définir la direction de navigation automatique</div>
+          <div className="text-xs text-gray-600 font-medium">{loc('auto_nav_title')}</div>
+          <div className="text-xs text-gray-500 text-center">{loc('auto_direction_help')}</div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setPreferredDirection('up')}
@@ -922,7 +1101,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                    : 'bg-blue-500 hover:bg-blue-600 text-white'
                }`}
                disabled={!selectedCell}
-               title="Définir direction automatique: haut"
+               title={loc('dir_up')}
              >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m18 15-6-6-6 6"/>
@@ -936,7 +1115,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                    : 'bg-blue-500 hover:bg-blue-600 text-white'
                }`}
                disabled={!selectedCell}
-               title="Définir direction automatique: gauche"
+               title={loc('dir_left')}
              >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m15 18-6-6 6-6"/>
@@ -950,7 +1129,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                    : 'bg-blue-500 hover:bg-blue-600 text-white'
                }`}
                disabled={!selectedCell}
-               title="Définir direction automatique: bas"
+               title={loc('dir_down')}
              >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m6 9 6 6 6-6"/>
@@ -964,7 +1143,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
                    : 'bg-blue-500 hover:bg-blue-600 text-white'
                }`}
                disabled={!selectedCell}
-               title="Définir direction automatique: droite"
+               title={loc('dir_right')}
              >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m9 18 6-6-6-6"/>
@@ -978,9 +1157,9 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
           <button
             onClick={() => externalResetGame && externalResetGame()}
             className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
-            title="Recommencer la partie depuis le début"
+            title={loc('reset_game_title')}
           >
-            🔄 Recommencer la partie
+            🔄 {loc('reset_game_label')}
           </button>
         </div>
       </div>

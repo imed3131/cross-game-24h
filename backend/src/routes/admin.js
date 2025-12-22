@@ -36,7 +36,7 @@ router.get('/get-puzzle/:id', getPuzzle); // Route dédiée pour éviter conflit
 // Routes avec paramètres ID (après les routes spécifiques)
 router.get('/puzzle/:id', getPuzzle);
 router.post('/puzzle', validatePuzzle, createPuzzle);
-router.put('/puzzle/:id', validatePuzzle, updatePuzzle);
+router.put('/puzzle/:id', updatePuzzle);
 router.patch('/puzzle/:id/toggle-publish', togglePuzzlePublishStatus);
 router.delete('/puzzle/:id', deletePuzzle);
 

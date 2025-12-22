@@ -241,47 +241,60 @@ const createCrosswordPuzzle = async (req, res) => {
     console.log('Grid is array:', Array.isArray(grid));
     console.log('Grid value:', grid);
 
-    // Validation complète des données
-    console.log('=== Validation complète ===');
-    const completeValidation = validateCompletePuzzleData({ 
-      title, 
-      language, 
-      grid, 
-      cluesHorizontal, 
-      cluesVertical 
-    });
-    console.log('Validation complète result:', completeValidation);
-    if (!completeValidation.isValid) {
-      return res.status(400).json({ 
-        error: 'Données de puzzle incomplètes', 
-        details: completeValidation.errors 
+    // Minimal server-side validation per product request:
+    // Only require rows, cols, date and language. Accept partial/incomplete puzzles.
+    console.log('=== Validation minimale (rows, cols, date, language) ===');
+    const missing = [];
+    if (!rows) missing.push('rows');
+    if (!cols) missing.push('cols');
+    if (!date) missing.push('date');
+    if (!language) missing.push('language');
+
+    if (missing.length > 0) {
+      console.log('Champs manquants:', missing);
+      return res.status(400).json({
+        error: 'Champs requis manquants',
+        missing,
+        message: `Les champs suivants sont requis: ${missing.join(', ')}`
       });
     }
 
-    // Validation des caractères
-    console.log('=== Validation des caractères ===');
-    const charValidation = validateCharacters(grid, language);
-    console.log('Validation result:', charValidation);
-    if (!charValidation.valid) {
-      return res.status(400).json({ 
-        error: charValidation.error 
-      });
+    // Ensure numeric rows/cols
+    const parsedRows = parseInt(rows, 10);
+    const parsedCols = parseInt(cols, 10);
+
+    if (isNaN(parsedRows) || parsedRows <= 0) {
+      return res.status(400).json({ error: 'Valeur invalide pour rows' });
     }
+    if (isNaN(parsedCols) || parsedCols <= 0) {
+      return res.status(400).json({ error: 'Valeur invalide pour cols' });
+    }
+
+    // Ensure grid exists and is well-formed; if not provided, create an empty grid of the given size
+    let safeGrid = grid;
+    if (!Array.isArray(safeGrid) || safeGrid.length !== parsedRows || !Array.isArray(safeGrid[0]) || safeGrid[0].length !== parsedCols) {
+      console.log('Grid manquante ou dimension invalide - création d\'une grille vide');
+      safeGrid = Array(parsedRows).fill().map(() => Array(parsedCols).fill(''));
+    }
+
+    // Ensure clues objects exist
+    const safeCluesHorizontal = cluesHorizontal || {};
+    const safeCluesVertical = cluesVertical || {};
 
     // Génération de la numérotation
     console.log('=== Génération numérotation ===');
-    const numbering = generateNumbering(grid);
+    const numbering = generateNumbering(safeGrid);
     console.log('Numbering generated:', numbering);
     
     // Extraction des mots (pour information, mais on ne valide plus les indices manquants)
     console.log('=== Extraction des mots ===');
-    const { horizontalWords, verticalWords } = extractWords(grid, numbering);
+    const { horizontalWords, verticalWords } = extractWords(safeGrid, numbering);
     console.log('Horizontal words:', horizontalWords);
     console.log('Vertical words:', verticalWords);
     
     console.log('=== Indices fournis ===');
-    console.log('Horizontal clues keys:', Object.keys(cluesHorizontal));
-    console.log('Vertical clues keys:', Object.keys(cluesVertical));
+    console.log('Horizontal clues keys:', Object.keys(safeCluesHorizontal));
+    console.log('Vertical clues keys:', Object.keys(safeCluesVertical));
 
     // On accepte les indices fournis par le frontend sans validation stricte
     // car le frontend gère sa propre logique de numérotation ligne/colonne
@@ -323,7 +336,7 @@ const createCrosswordPuzzle = async (req, res) => {
     // Toujours créer un nouveau puzzle (plus de remplacement)
     console.log('=== Création nouveau puzzle ===');
     console.log('Données à sauvegarder:', {
-      title: finalTitle, date, language, difficulty, isPublished, rows, cols
+      title: finalTitle, date, language, difficulty, isPublished, rows: parsedRows, cols: parsedCols
     });
     
     const puzzle = await prisma.crosswordPuzzle.create({
@@ -332,12 +345,12 @@ const createCrosswordPuzzle = async (req, res) => {
         date: new Date(date),
         language,
         difficulty,
-        rows,
-        cols,
-        grid: JSON.stringify(grid),
-        cluesHorizontal: JSON.stringify(cluesHorizontal),
-        cluesVertical: JSON.stringify(cluesVertical),
-        solution: JSON.stringify(grid),
+        rows: parsedRows,
+        cols: parsedCols,
+        grid: JSON.stringify(safeGrid),
+        cluesHorizontal: JSON.stringify(safeCluesHorizontal),
+        cluesVertical: JSON.stringify(safeCluesVertical),
+        solution: JSON.stringify(safeGrid),
         numbering: JSON.stringify(numbering),
         isPublished
       }

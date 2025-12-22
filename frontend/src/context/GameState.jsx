@@ -15,7 +15,7 @@ const initialState = {
   isPaused: false,
   isCompleted: false,
   showingSolution: false,
-  language: 'FR', // Default language - French
+  language: 'AR', // Default language - Arabic (players are Arabic-only now)
 };
 
 // Game actions
@@ -63,7 +63,8 @@ const gameReducer = (state, action) => {
         ...state,
         currentPuzzle: puzzle,
         currentGrid: puzzle ? JSON.parse(JSON.stringify(puzzle.grid)) : null,
-        language: puzzle?.language || 'FR',
+        // Keep the site / UI language unchanged (players want the page to remain Arabic)
+        language: state.language || 'AR',
         isCompleted: false,
         showingSolution: false,
         selectedCell: { row: -1, col: -1 },

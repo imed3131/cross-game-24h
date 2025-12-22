@@ -12,6 +12,8 @@ import CompletionCelebration from '../components/player/CompletionCelebration';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Button from '../components/common/Button';
 import { ClueProvider } from '../context/ClueContext';
+import { t } from '../i18n';
+import { useGameState } from '../context/GameState';
 
 const PlayerPage = () => {
   const [showCelebration, setShowCelebration] = useState(false);
@@ -108,6 +110,21 @@ const PlayerPage = () => {
     language === 'FR' ? 'Français' : 'العربية', 
     [language]
   );
+
+  // localizer
+  const { state: gameState } = useGameState();
+  const lang = gameState.language || language;
+  const loc = (key, vars) => {
+    // simple variable replacement support for page_of
+    let v = t(key, lang);
+    if (vars && typeof v === 'string') {
+      Object.keys(vars).forEach(k => { v = v.replace(`{${k}}`, String(vars[k])); });
+    }
+    return v;
+  };
+
+  // RTL support
+  const topDirectionClass = lang === 'AR' ? 'rtl' : '';
   const effectiveHasMultiplePuzzles = useMemo(() => openedFromArchive ? false : hasMultiplePuzzles, [openedFromArchive, hasMultiplePuzzles]);
 
   if (loading) {
@@ -141,7 +158,7 @@ const PlayerPage = () => {
               transition={{ delay: 0.3 }}
               className="text-2xl font-bold text-white mb-2"
             >
-              Chargement des puzzles...
+              {loc('loading_puzzles')}
             </motion.h2>
             <motion.p
               initial={{ y: 20, opacity: 0 }}
@@ -149,7 +166,7 @@ const PlayerPage = () => {
               transition={{ delay: 0.5 }}
               className="text-white/70"
             >
-              Préparation de votre aventure mentale
+              {loc('subtitle')}
             </motion.p>
           </motion.div>
         </div>
@@ -158,7 +175,7 @@ const PlayerPage = () => {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-violet-900 via-blue-900 to-purple-900">
+    <div className={`${topDirectionClass} min-h-screen relative overflow-hidden bg-gradient-to-br from-violet-900 via-blue-900 to-purple-900`} dir={lang === 'AR' ? 'rtl' : 'ltr'}>
       {/* Animated Background Elements */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Floating geometric shapes */}
@@ -222,7 +239,7 @@ const PlayerPage = () => {
               transition={{ duration: 0.8, ease: "backOut" }}
             >
               <span className="bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
-                Les Mots Croisés
+                {loc('site_title')}
               </span>
               
               {/* Animated underline */}
@@ -240,47 +257,10 @@ const PlayerPage = () => {
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 1, duration: 0.6 }}
             >
-               Défi quotidien pour les esprits brillants
+               {loc('subtitle')}
               <br />
               <span className="text-lg text-white/60">Explorez, réfléchissez, triomphez !</span>
             </motion.p>
-          </motion.div>
-
-          {/* Controls */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.2 }}
-            className="flex flex-col sm:flex-row flex-wrap items-center justify-between mb-6 sm:mb-8 lg:mb-12 gap-3 sm:gap-4 lg:gap-6"
-          >
-            {/* Left Controls - archive shown by default; button removed */}
-            <div className="flex items-center justify-center sm:justify-start w-full sm:w-auto" />
-
-            {/* Right Controls - Game Stats */}
-            <div className="flex items-center justify-center flex-wrap gap-2 sm:gap-3 lg:gap-6 w-full sm:w-auto">
-              { !showArchive && todaysPuzzles.length > 0 && currentPuzzle && currentPuzzle.language && (
-                <>
-                  {/* Language indicator */}
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: 1.2, type: "spring" }}
-                    className="backdrop-blur-lg bg-white/10 rounded-xl lg:rounded-2xl border border-white/20 p-2 sm:p-3 lg:p-4 shadow-xl"
-                  >
-                    <div className="flex items-center space-x-1.5 sm:space-x-2 lg:space-x-3">
-                      <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
-                      <div className="text-white">
-                        <div className="text-xs sm:text-sm font-semibold">
-                          {currentLanguageDisplay}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                  
-                  {/* Reset button removed from header - moved near grid for clarity */}
-                </>
-              )}
-            </div>
           </motion.div>
 
           {/* Archive inline panel */}
@@ -325,7 +305,7 @@ const PlayerPage = () => {
                 >
                   <BookOpen className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-yellow-400" />
                   <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-yellow-400 to-pink-400 bg-clip-text text-transparent">
-                    Jeu du Jour
+                    {loc('game_of_day')}
                   </h2>
                 </motion.div>
                 
@@ -369,7 +349,7 @@ const PlayerPage = () => {
                       <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                         <path d="M12 3L6 9L12 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
-                    </span>                       Retour aux archives
+                    </span>                       {loc('back_to_archive')}
 
                     </Button>
                   </div>
@@ -407,7 +387,7 @@ const PlayerPage = () => {
               className="text-center py-20"
             >
               <div className="backdrop-blur-lg bg-white/10 rounded-3xl border border-white/20 p-12 max-w-md mx-auto shadow-2xl">
-                <h3 className="text-2xl font-bold text-white mb-4">Aucun puzzle disponible</h3>
+                <h3 className="text-2xl font-bold text-white mb-4">{loc('no_puzzle')}</h3>
                 <p className="text-white/70 mb-6">Les puzzles seront récupérés automatiquement — vous pouvez forcer une actualisation.</p>
                 <div>
                   <Button

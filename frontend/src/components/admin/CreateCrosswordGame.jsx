@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Save, Eye, Grid, Type, HelpCircle, Check, X, ArrowLeft, Download } from 'lucide-react';
 import { format } from 'date-fns';
@@ -23,6 +24,30 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
   const [currentStep, setCurrentStep] = useState('create'); // create (grille + indices)
   const [selectedCell, setSelectedCell] = useState(null);
   const [editingCell, setEditingCell] = useState(null);
+
+  // Tooltip/clue state for headers (admin) — mirrors player's header behaviour
+  const anchorRefs = useRef({});
+  const [visibleClueId, setVisibleClueId] = useState(null);
+  const [persistentClueId, setPersistentClueId] = useState(null);
+
+  const openClueHover = (id) => {
+    if (!persistentClueId) setVisibleClueId(id);
+  };
+  const closeClueHover = () => {
+    if (!persistentClueId) setVisibleClueId(null);
+  };
+  const openClueUser = (id) => {
+    setPersistentClueId(id);
+    setVisibleClueId(id);
+  };
+  const closeClueUser = ({ force } = {}) => {
+    if (force) {
+      setPersistentClueId(null);
+      setVisibleClueId(null);
+    } else {
+      setPersistentClueId(null);
+    }
+  };
 
   // Style pour le support de l'arabe
   const getTextStyleForLanguage = () => {
@@ -459,6 +484,55 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
     });
   }, [gridSize.rows, gridSize.cols]);
 
+  // Small tooltip/popover for header clues (mirrors player's floating clue behavior)
+  const ClueTooltip = ({ clueId, clue, buttonRef, onClose }) => {
+    const elRef = useRef(null);
+    const [pos, setPos] = useState({ left: 0, top: 0, side: 'top' });
+
+    useLayoutEffect(() => {
+      if (!buttonRef?.current || !elRef.current) return;
+      const anchor = buttonRef.current;
+      const tooltipEl = elRef.current;
+      tooltipEl.style.maxWidth = 'min(90vw, 420px)';
+      const anchorRect = anchor.getBoundingClientRect();
+      const tooltipRect = tooltipEl.getBoundingClientRect();
+
+      const availableAbove = anchorRect.top;
+      const availableBelow = window.innerHeight - anchorRect.bottom;
+
+      let side = 'top';
+      if (availableAbove >= tooltipRect.height + 12) {
+        side = 'top';
+      } else if (availableBelow >= tooltipRect.height + 12) {
+        side = 'bottom';
+      } else {
+        side = availableAbove > availableBelow ? 'top' : 'bottom';
+      }
+
+      const left = Math.min(Math.max(8, anchorRect.left + anchorRect.width / 2 - tooltipRect.width / 2), window.innerWidth - tooltipRect.width - 8);
+      const top = side === 'top' ? (anchorRect.top - tooltipRect.height - 8) : (anchorRect.bottom + 8);
+
+      setPos({ left, top, side });
+    }, [buttonRef, clue]);
+
+    if (typeof document === 'undefined') return null;
+
+    const clueNumber = clueId?.split('-')?.[1] || '';
+
+    return createPortal(
+      <div ref={elRef} className={`floating-clue ${pos.side === 'top' ? 'arrow-down' : 'arrow-up'}`} style={{ position: 'fixed', left: `${pos.left}px`, top: `${pos.top}px`, zIndex: 9999 }} onClick={(e) => e.stopPropagation()}>
+        <button className="clue-close" onClick={onClose} aria-label={language === 'arabic' ? 'إغلاق' : 'Fermer'} title={language === 'arabic' ? 'إغلاق' : 'Fermer'}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18" /><path d="M6 6l12 12" /></svg>
+        </button>
+        <div>
+          <div className="clue-badge">{language === 'arabic' ? 'تعريف' : 'Indice'} {clueNumber}</div>
+          <div className={`clue-body ${language === 'arabic' ? 'font-arabic' : ''}`}>{clue}</div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
   // Générer automatiquement les mots quand la grille change
   useEffect(() => {
     generateNumbering();
@@ -478,6 +552,22 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
       }
     }));
   };
+
+  // Auto-resize textarea to fit content and avoid scrollbars
+  const autoResizeTextarea = (el) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  // Ensure textareas grow to fit content on initial render and when clues change
+  useEffect(() => {
+    const els = document.querySelectorAll('.auto-resize-clue');
+    els.forEach(el => {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    });
+  }, [clues, words]);
 
   // Calculer le progrès : cellules remplies / cellules totales non bloquées
   const calculateProgress = () => {
@@ -616,15 +706,53 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
     // Mettre à jour les mots avec les données actuelles
     setWords(currentWords);
     
-    // Validation complète avant sauvegarde
-    if (!validatePuzzle()) {
-      return;
+    // For creation (no currentPuzzleId): require rows, cols, date, language. For edits (currentPuzzleId present): allow anything.
+    if (!currentPuzzleId) {
+      const missingFields = [];
+      if (!gridSize?.rows) missingFields.push('lignes');
+      if (!gridSize?.cols) missingFields.push('colonnes');
+      if (!selectedDate) missingFields.push('date');
+      if (!language) missingFields.push('langage');
+
+      if (missingFields.length > 0) {
+        missingFields.forEach(f => toast.error(`Attribut manquant: ${f}`));
+        return;
+      }
+
+      // Allow incomplete drafts for creation but notify the user
+      toast.success('Sauvegarde en brouillon autorisée (incomplète possible)');
+    } else {
+      // Editing existing puzzle: no required fields
+      toast.success('Enregistrement des modifications (sans contraintes)');
     }
 
     setLoading(true);
     try {
+        // Ensure grid matches chosen size; if not, normalize (pad/truncate) so saving is allowed
+      const normalizeGrid = (g, rows, cols) => {
+        const normalized = [];
+        for (let r = 0; r < rows; r++) {
+          const row = (g[r] && Array.isArray(g[r])) ? [...g[r]] : Array(cols).fill({ value: '', isBlocked: false });
+          // Truncate or pad columns
+          if (row.length > cols) row.length = cols;
+          while (row.length < cols) row.push({ value: '', isBlocked: false });
+          normalized.push(row.map(cell => (cell === undefined ? { value: '', isBlocked: false } : cell)));
+        }
+        return normalized;
+      };
+
+      const normalizedGrid = normalizeGrid(grid, gridSize.rows, gridSize.cols);
+
+      // Validation côté frontend avant envoi (après normalisation)
+      console.log('Grid size check (normalized):', {
+        gridLength: normalizedGrid.length,
+        expectedRows: gridSize.rows,
+        firstRowLength: normalizedGrid[0]?.length,
+        expectedCols: gridSize.cols
+      });
+
       // Convertir le format des données pour correspondre au backend
-      const gridForBackend = grid.map((row, rowIndex) => 
+      const gridForBackend = normalizedGrid.map((row, rowIndex) => 
         row.map((cell, colIndex) => {
           if (!cell) {
             console.warn(`Cell undefined at [${rowIndex}][${colIndex}]`);
@@ -634,24 +762,6 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
         })
       );
 
-      // Validation côté frontend avant envoi
-      console.log('Grid size check:', {
-        gridLength: grid.length,
-        expectedRows: gridSize.rows,
-        firstRowLength: grid[0]?.length,
-        expectedCols: gridSize.cols
-      });
-
-      // Vérifier que la grille a la bonne taille
-      if (grid.length !== gridSize.rows) {
-        toast.error(`Erreur de grille: ${grid.length} lignes au lieu de ${gridSize.rows}`);
-        return;
-      }
-      
-      if (grid[0]?.length !== gridSize.cols) {
-        toast.error(`Erreur de grille: ${grid[0]?.length} colonnes au lieu de ${gridSize.cols}`);
-        return;
-      }
 
       // Nettoyer les indices (maintenant ils correspondent directement 1:1)
       const cleanClues = (clueObj) => {
@@ -702,6 +812,15 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
       console.error('Error saving puzzle:', error);
       console.error('Error response data:', error.response?.data);
       console.error('Error response status:', error.response?.status);
+
+      // If server returned missing fields, show a notification per missing attribute
+      if (error.response?.data?.missing && Array.isArray(error.response.data.missing)) {
+        const fieldMap = { rows: 'Lignes', cols: 'Colonnes', date: 'Date', language: 'Langue' };
+        error.response.data.missing.forEach(f => {
+          toast.error(`${fieldMap[f] || f} manquant`);
+        });
+        return;
+      }
       
       // Gestion spécifique pour les erreurs d'authentification
       if (error.response?.status === 401 || error.response?.status === 400) {
@@ -740,7 +859,7 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
       <div
         key={`${row}-${col}`}
         className={`
-          relative w-12 h-12 border border-gray-300 text-sm font-bold
+          relative w-16 h-16 border border-gray-300 text-lg font-extrabold
           flex items-center justify-center
           ${cell.isBlocked ? 'bg-black cursor-pointer hover:bg-gray-800' : 'bg-white'}
         `}
@@ -760,8 +879,8 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
                 handleCellClick(row, col);
               }
             }}
-            className="w-full h-full text-center border-none outline-none bg-transparent text-sm font-bold focus:ring-2 focus:ring-blue-500 hover:bg-blue-50"
-            style={getTextStyleForLanguage()}
+            className="w-full h-full text-center border-none outline-none bg-transparent text-2xl font-extrabold focus:ring-2 focus:ring-blue-500 hover:bg-blue-50"
+            style={{ ...getTextStyleForLanguage(), fontSize: language === 'arabic' ? '24px' : '28px' }}
             maxLength="1"
             placeholder=""
             data-row={row}
@@ -777,7 +896,7 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
               e.stopPropagation();
               handleCellClick(row, col);
             }}
-            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center"
+            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full text-sm opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center"
             title="Bloquer cette cellule"
           >
             ×
@@ -939,38 +1058,131 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
               
               <div className="overflow-auto max-w-full flex justify-center">
                 <div className="relative">
-                  {/* Numéros de colonnes (top) */}
-                  <div className="flex mb-1">
-                    <div className="w-8"></div> {/* Espace pour l'alignement */}
-                    {Array.from({ length: gridSize.cols }, (_, index) => (
-                      <div key={`col-${index}`} className="w-12 h-8 flex items-center justify-center text-sm font-bold text-blue-600">
-                        {index + 1}
-                      </div>
-                    ))}
+                  {/* Numéros de colonnes (top) - reverse for Arabic */}
+                  <div className="inline-grid mb-1" style={{ gridTemplateColumns: `4rem repeat(${gridSize.cols}, 4rem)`, gap: '0', direction: language === 'arabic' ? 'rtl' : 'ltr' }}>
+                    {/* Corner spacer */}
+                    <div className="w-16 h-16" />
+                    {/* Column headers aligned to the grid columns */}
+                    {Array.from({ length: gridSize.cols }, (_, index) => {
+                      const clueId = `col-${index + 1}`;
+                      const hasClue = !!clues.down[index + 1];
+                      const isActive = visibleClueId === clueId;
+                      return (
+                        <div key={`col-${index}`} ref={(el) => { anchorRefs.current[clueId] = el; }} className={`relative w-16 h-16 border border-gray-300 bg-white text-lg font-extrabold flex items-center justify-center text-blue-600 ${hasClue ? 'cursor-pointer' : ''}`} role="button" tabIndex={0}
+                          aria-label={`${language === 'arabic' ? 'تعريف' : 'Indice'} ${index + 1}`}
+                          aria-expanded={isActive}
+                          onMouseEnter={() => hasClue && openClueHover(clueId)}
+                          onMouseLeave={() => hasClue && closeClueHover()}
+                          onClick={() => hasClue && openClueUser(clueId)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { hasClue && openClueUser(clueId); } if (e.key === 'Escape') { closeClueUser({ force: true }); } }}
+                          title={clues.down[index + 1] ? clues.down[index + 1] : (language === 'arabic' ? 'لا يوجد تعريف' : "Pas d'indice")}>
+                            <span>{index + 1}</span>
+
+                          {isActive && hasClue && (
+                            <ClueTooltip
+                              clueId={clueId}
+                              clue={clues.down[index + 1]}
+                              buttonRef={{ current: anchorRefs.current[clueId] }}
+                              onClose={() => { if (persistentClueId === clueId) closeClueUser({ force: true }); else closeClueHover(); }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div className="flex">
-                    {/* Numéros de lignes (left) */}
-                    <div className="flex flex-col">
-                      {Array.from({ length: gridSize.rows }, (_, index) => (
-                        <div key={`row-${index}`} className="w-8 h-12 flex items-center justify-center text-sm font-bold text-green-600">
-                          {index + 1}
+                    {language === 'arabic' ? (
+                      <>
+                        {/* Grid first, row numbers on the right */}
+                        <div 
+                          className="inline-grid gap-0 border-2 border-gray-400"
+                          style={{ 
+                            gridTemplateColumns: `repeat(${gridSize.cols}, 4rem)`,
+                            gridAutoRows: '4rem',
+                            maxWidth: 'fit-content'
+                          }}
+                        >
+                          {grid.map((row, rowIndex) =>
+                            row.map((_, colIndex) => renderGridCell(rowIndex, colIndex))
+                          )}
                         </div>
-                      ))}
-                    </div>
 
-                    {/* Grille principale */}
-                    <div 
-                      className="inline-grid gap-0 border-2 border-gray-400"
-                      style={{ 
-                        gridTemplateColumns: `repeat(${gridSize.cols}, minmax(0, 1fr))`,
-                        maxWidth: 'fit-content'
-                      }}
-                    >
-                      {grid.map((row, rowIndex) =>
-                        row.map((_, colIndex) => renderGridCell(rowIndex, colIndex))
-                      )}
-                    </div>
+                        <div className="flex flex-col">
+                          {Array.from({ length: gridSize.rows }, (_, index) => {
+                            const clueId = `row-${index + 1}`;
+                            const hasClue = !!clues.across[index + 1];
+                            const isActive = visibleClueId === clueId;
+                            return (
+                              <div key={`row-${index}`} ref={(el) => { anchorRefs.current[clueId] = el; }} className={`relative w-16 h-16 border border-gray-300 bg-white text-lg font-extrabold flex items-center justify-center text-green-600 ${hasClue ? 'cursor-pointer' : ''}`} role="button" tabIndex={0}
+                                aria-label={`${language === 'arabic' ? 'تعريف' : 'Indice'} ${index + 1}`}
+                                aria-expanded={isActive}
+                                onMouseEnter={() => hasClue && openClueHover(clueId)}
+                                onMouseLeave={() => hasClue && closeClueHover()}
+                                onClick={() => hasClue && openClueUser(clueId)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { hasClue && openClueUser(clueId); } if (e.key === 'Escape') { closeClueUser({ force: true }); } }}
+                                title={clues.across[index + 1] ? clues.across[index + 1] : (language === 'arabic' ? 'لا يوجد تعريف' : "Pas d'indice")}>
+                                <span>{index + 1}</span>
+
+                                {isActive && hasClue && (
+                                  <ClueTooltip
+                                    clueId={clueId}
+                                    clue={clues.across[index + 1]}
+                                    buttonRef={{ current: anchorRefs.current[clueId] }}
+                                    onClose={() => { if (persistentClueId === clueId) closeClueUser({ force: true }); else closeClueHover(); }}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Row numbers on the left, grid to the right */}
+                        <div className="flex flex-col">
+                          {Array.from({ length: gridSize.rows }, (_, index) => {
+                            const clueId = `row-${index + 1}`;
+                            const hasClue = !!clues.across[index + 1];
+                            const isActive = visibleClueId === clueId;
+                            return (
+                              <div key={`row-${index}`} ref={(el) => { anchorRefs.current[clueId] = el; }} className={`relative w-16 h-16 border border-gray-300 bg-white text-lg font-extrabold flex items-center justify-center text-green-600 ${hasClue ? 'cursor-pointer' : ''}`} role="button" tabIndex={0}
+                                aria-label={`${language === 'arabic' ? 'تعريف' : 'Indice'} ${index + 1}`}
+                                aria-expanded={isActive}
+                                onMouseEnter={() => hasClue && openClueHover(clueId)}
+                                onMouseLeave={() => hasClue && closeClueHover()}
+                                onClick={() => hasClue && openClueUser(clueId)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { hasClue && openClueUser(clueId); } if (e.key === 'Escape') { closeClueUser({ force: true }); } }}
+                                title={clues.across[index + 1] ? clues.across[index + 1] : (language === 'arabic' ? 'لا يوجد تعريف' : "Pas d'indice")}> 
+                                <span>{index + 1}</span>
+
+                                {isActive && hasClue && (
+                                  <ClueTooltip
+                                    clueId={clueId}
+                                    clue={clues.across[index + 1]}
+                                    buttonRef={{ current: anchorRefs.current[clueId] }}
+                                    onClose={() => { if (persistentClueId === clueId) closeClueUser({ force: true }); else closeClueHover(); }}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div 
+                          className="inline-grid gap-0 border-2 border-gray-400"
+                          style={{ 
+                            gridTemplateColumns: `repeat(${gridSize.cols}, 4rem)`,
+                            gridAutoRows: '4rem',
+                            maxWidth: 'fit-content'
+                          }}
+                        >
+                          {grid.map((row, rowIndex) =>
+                            row.map((_, colIndex) => renderGridCell(rowIndex, colIndex))
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -998,10 +1210,11 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
                         </div>
                         <textarea
                           value={clues.across[word.number] || ''}
-                          onChange={(e) => handleClueChange('across', word.number, e.target.value)}
+                          onChange={(e) => { handleClueChange('across', word.number, e.target.value); }}
+                          onInput={(e) => autoResizeTextarea(e.target)}
                           placeholder={language === 'arabic' ? `أدخل المؤشر للصف رقم ${word.number}...` : `Entrez l'indice pour la ligne ${word.number}...`}
-                          className="w-full p-2 border rounded-md resize-none h-16 focus:ring-2 focus:ring-green-500"
-                          style={getTextStyleForLanguage()}
+                          className="w-full p-3 border rounded-md resize-none overflow-hidden auto-resize-clue focus:ring-2 focus:ring-green-500 text-lg"
+                          style={{ ...getTextStyleForLanguage(), fontSize: language === 'arabic' ? '20px' : '16px' }}
                           lang={language === 'arabic' ? 'ar' : 'fr'}
                         />
                       </div>
@@ -1023,10 +1236,11 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
                         </div>
                         <textarea
                           value={clues.down[word.number] || ''}
-                          onChange={(e) => handleClueChange('down', word.number, e.target.value)}
+                          onChange={(e) => { handleClueChange('down', word.number, e.target.value); }}
+                          onInput={(e) => autoResizeTextarea(e.target)}
                           placeholder={language === 'arabic' ? `أدخل المؤشر للعمود رقم ${word.number}...` : `Entrez l'indice pour la colonne ${word.number}...`}
-                          className="w-full p-2 border rounded-md resize-none h-16 focus:ring-2 focus:ring-blue-500"
-                          style={getTextStyleForLanguage()}
+                          className="w-full p-3 border rounded-md resize-none overflow-hidden auto-resize-clue focus:ring-2 focus:ring-blue-500 text-lg"
+                          style={{ ...getTextStyleForLanguage(), fontSize: language === 'arabic' ? '20px' : '16px' }}
                           lang={language === 'arabic' ? 'ar' : 'fr'}
                         />
                       </div>

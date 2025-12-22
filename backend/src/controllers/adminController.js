@@ -178,37 +178,35 @@ const updatePuzzle = async (req, res) => {
   try {
     const { id } = req.params;
     const { date, language, gridSize, rows, cols, grid, cluesHorizontal, cluesVertical, solution, isPublished, title, difficulty } = req.body;
-    
-    // Validation des données
-    const validation = validatePuzzleData({ title, language, grid, cluesHorizontal, cluesVertical, solution });
-    if (!validation.isValid) {
-      return res.status(400).json({ 
-        error: 'Données invalides', 
-        details: validation.errors 
-      });
+
+    // Allow partial updates: only include fields that are provided (no strict validation)
+    const updateData = {};
+
+    if (title !== undefined) updateData.title = title;
+    if (date !== undefined) updateData.date = new Date(date);
+    if (language !== undefined) updateData.language = language;
+    if (difficulty !== undefined) updateData.difficulty = difficulty;
+    if (rows !== undefined) updateData.rows = parseInt(rows);
+    if (cols !== undefined) updateData.cols = parseInt(cols);
+
+    if (grid !== undefined) updateData.grid = JSON.stringify(grid);
+    if (cluesHorizontal !== undefined) updateData.cluesHorizontal = JSON.stringify(cluesHorizontal);
+    if (cluesVertical !== undefined) updateData.cluesVertical = JSON.stringify(cluesVertical);
+    if (solution !== undefined) updateData.solution = JSON.stringify(solution);
+    if (isPublished !== undefined) updateData.isPublished = Boolean(isPublished);
+
+    // If no fields provided, return the current puzzle (no-op)
+    if (Object.keys(updateData).length === 0) {
+      const existing = await prisma.crosswordPuzzle.findUnique({ where: { id: parseInt(id) } });
+      if (!existing) return res.status(404).json({ error: 'Puzzle not found' });
+      return res.json(existing);
     }
-    
-    // Use rows/cols if provided, otherwise derive from gridSize (for backward compatibility)
-    const puzzleRows = rows || Math.sqrt(gridSize || 225); // Default 15x15 if nothing provided
-    const puzzleCols = cols || Math.sqrt(gridSize || 225);
-    
+
     const puzzle = await prisma.crosswordPuzzle.update({
       where: { id: parseInt(id) },
-      data: {
-        title: title || "Puzzle du jour",
-        date: new Date(date),
-        language,
-        difficulty: difficulty || "medium", 
-        rows: parseInt(puzzleRows),
-        cols: parseInt(puzzleCols),
-        grid: JSON.stringify(grid),
-        cluesHorizontal: JSON.stringify(cluesHorizontal),
-        cluesVertical: JSON.stringify(cluesVertical),
-        solution: JSON.stringify(solution),
-        isPublished: Boolean(isPublished),
-      },
+      data: updateData,
     });
-    
+
     res.json(puzzle);
   } catch (error) {
     console.error('Update puzzle error:', error);

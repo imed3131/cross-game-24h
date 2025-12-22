@@ -13,7 +13,8 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "node prisma/seed.js",
-    "db:reset": "prisma db push --force-reset && npm run db:seed"
+    "db:reset": "prisma db push --force-reset && npm run db:seed",
+    "ping-health": "node scripts/ping-health.js"
   },
   "dependencies": {
     "express": "^4.18.2",

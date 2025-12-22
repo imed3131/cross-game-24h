@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useClue } from '../../context/ClueContext';
+import { useGameState } from '../../context/GameState';
+import { t } from '../../i18n';
 
 const CrosswordCell = ({ 
   value = '', 
@@ -22,6 +24,9 @@ const CrosswordCell = ({
   , getClueForNumber, canOpenClueOnHover
   , isTouchDevice
 }) => {
+  const { state } = useGameState();
+  const siteLang = state?.language || 'FR';
+  const loc = (k) => t(k, siteLang);
   const { visibleClueId, persistentClueId, openClueHover, closeClueHover, closeClueUser } = useClue();
   const inputRef = useRef(null);
   const [inputValue, setInputValue] = useState(value);
@@ -121,7 +126,7 @@ const CrosswordCell = ({
         
         if (onNavigate) {
           setTimeout(() => {
-            onNavigate(language === 'AR' ? 'left' : 'next', row, col);
+            onNavigate(language === 'AR' ? 'left' : 'right', row, col);
           }, 50); // Adjust navigation based on language
         }
       }
@@ -182,14 +187,14 @@ const CrosswordCell = ({
         </button>
         {/* inline clue for this cell number */}
         {visibleClueId === `cell-${row}-${col}` && (
-          <div data-visible="true" className={`floating-clue ${language === 'ar' ? 'rtl' : ''}`} style={{ top: 'calc(100% + 6px)', left: '0' }} onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()} onMouseOver={(e) => e.stopPropagation()} onFocus={(e) => e.stopPropagation()} onBlur={(e) => e.stopPropagation()}>
+          <div data-visible="true" className={`floating-clue ${language === 'AR' ? 'rtl' : ''}`} dir={language === 'AR' ? 'rtl' : 'ltr'} style={{ top: 'calc(100% + 6px)', left: '0' }} onClick={(e) => e.stopPropagation()} onMouseEnter={(e) => e.stopPropagation()} onMouseLeave={(e) => e.stopPropagation()} onMouseOver={(e) => e.stopPropagation()} onFocus={(e) => e.stopPropagation()} onBlur={(e) => e.stopPropagation()}>
             <button className="clue-close" onClick={() => {
               const id = `cell-${row}-${col}`;
               if (persistentClueId === id) closeClueUser({ force: true }); else closeClueHover();
-            }} aria-label="Fermer" title="Fermer">
+            }} aria-label={loc('close')} title={loc('close')}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><path d="M18 6L6 18" /><path d="M6 6l12 12" /></svg>
             </button>
-            <div className={`clue-body ${language === 'ar' ? 'font-arabic' : ''}`}>{getClueForNumber ? getClueForNumber(row, col) : ''}</div>
+            <div className={`clue-body ${language === 'AR' ? 'font-arabic' : ''}`}>{getClueForNumber ? getClueForNumber(row, col) : ''}</div>
           </div>
         )}
         </>

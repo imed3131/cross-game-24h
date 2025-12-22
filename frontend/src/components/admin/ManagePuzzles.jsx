@@ -120,7 +120,7 @@ const ManagePuzzles = () => {
       case 'hard': return 'Difficile';
       default: return difficulty;
     }
-  };
+  };  
 
   const getDateStatus = (dateString) => {
     const date = parseISO(dateString);
@@ -155,7 +155,7 @@ const ManagePuzzles = () => {
             <h1 className="text-3xl font-bold text-gray-900">Gestion des Puzzles</h1>
             <p className="text-gray-600 mt-1">
               Gérez tous vos puzzles de mots croisés
-            </p>
+            </p>  
           </div>
           <button
             onClick={() => setShowCreateForm(true)}
@@ -190,7 +190,7 @@ const ManagePuzzles = () => {
             >
               <option value="all">Tous les statuts</option>
               <option value="published">Publiés</option>
-              <option value="draft">Brouillons</option>
+              <option value="draft">Brouillons</option>  
             </select>
           </div>
         </div>
@@ -227,7 +227,7 @@ const ManagePuzzles = () => {
         {loading ? (
           <div className="p-8 text-center">
             <div className="animate-spin w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-600">Chargement des puzzles...</p>
+            <p className="text-gray-600">Chargement des puzzles...</p>  
           </div>
         ) : currentPuzzles.length === 0 ? (
           <div className="p-8 text-center">
@@ -257,19 +257,19 @@ const ManagePuzzles = () => {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Titre & Date
-                    </th>
+                    </th> 
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Difficulté
-                    </th>
+                    </th> 
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Statut
-                    </th>
+                    </th> 
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Taille
-                    </th>
+                    </th> 
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
-                    </th>
+                    </th> 
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">

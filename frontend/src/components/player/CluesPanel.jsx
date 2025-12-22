@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowDown } from 'lucide-react';
+import { useGameState } from '../../context/GameState';
+import { t } from '../../i18n';
 
 const CluesPanel = ({ 
   puzzle, 
@@ -9,11 +11,15 @@ const CluesPanel = ({
   language,
   className = '' 
 }) => {
+  const { state } = useGameState();
+  const siteLang = state?.language || language || 'FR';
+  const loc = (k) => t(k, siteLang);
+
   // If no puzzle loaded, render a small placeholder
   if (!puzzle) {
     return (
       <div className={`bg-white rounded-2xl shadow-lg p-6 ${className}`}>
-        <p className="text-gray-500 text-center">No puzzle loaded</p>
+        <p className="text-gray-500 text-center">{loc('loading_grid')}</p>
       </div>
     );
   }
@@ -30,7 +36,7 @@ const CluesPanel = ({
       className={`bg-white rounded-xl lg:rounded-2xl shadow-lg p-3 sm:p-4 lg:p-6 ${className}`}
     >
       <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 lg:mb-6 text-center">
-        Indice
+        {loc('clue')}
       </h2>
 
       {selected ? (
@@ -50,7 +56,7 @@ const CluesPanel = ({
           </div>
         </div>
       ) : (
-        <div className="text-center text-sm text-gray-600">Cliquez sur un numéro dans la grille pour afficher l'indice.</div>
+        <div className="text-center text-sm text-gray-600">{loc('click_number_instruction')}</div>
       )}
     </motion.div>
   );
