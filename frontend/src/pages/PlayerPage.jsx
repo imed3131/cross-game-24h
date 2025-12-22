@@ -94,14 +94,20 @@ const PlayerPage = () => {
   setOpenedFromArchive(false);
   }, [currentPuzzleIndex, todaysPuzzles, setSelectedPuzzle]);
 
-  // Handle play again
+  // Handle closing the celebration: close modal and reset puzzle (preserve archive state)
+  const handleCloseCelebration = useCallback(() => {
+    setShowCelebration(false);
+    // Reset the game so isCompleted becomes false and the celebration won't re-open
+    resetGame();
+  }, [resetGame]);
+
+  // Handle "Play Again" action: simply reset current puzzle and close celebration
+  // NOTE: we intentionally do NOT navigate to the next puzzle here so that the
+  // "Back to archive" button (openedFromArchive) remains visible when appropriate.
   const handlePlayAgain = useCallback(() => {
     setShowCelebration(false);
     resetGame();
-    if (todaysPuzzles.length > 1) {
-      navigatePuzzle('next');
-    }
-  }, [resetGame, todaysPuzzles.length, navigatePuzzle]);
+  }, [resetGame]);
 
   // Memoized values to prevent unnecessary re-renders
   const hasPuzzles = useMemo(() => todaysPuzzles.length > 0, [todaysPuzzles.length]);
@@ -345,11 +351,7 @@ const PlayerPage = () => {
                       className="bg-white/10 text-white px-3 py-2 rounded-lg hover:bg-white/20"
                       onClick={() => { setShowArchive(true); setOpenedFromArchive(false); }}
                     >
-                    <span className="inline-block align-middle mr-2">
-                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                        <path d="M12 3L6 9L12 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </span>                       {loc('back_to_archive')}
+                        {loc('back_to_archive')}
 
                     </Button>
                   </div>
@@ -405,7 +407,7 @@ const PlayerPage = () => {
         {/* Completion Celebration */}
         <CompletionCelebration
           isVisible={showCelebration}
-          onClose={() => setShowCelebration(false)}
+          onClose={handleCloseCelebration}
           completionTime={getElapsedTime()}
           language={language}
           onPlayAgain={handlePlayAgain}

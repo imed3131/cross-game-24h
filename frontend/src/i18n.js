@@ -100,7 +100,7 @@ export const translations = {
     no_puzzle: 'لا توجد لعبة متاحة',
     no_puzzle_sub: 'لا توجد لعبة لهذا اليوم.',
     game_of_day: 'لعبة اليوم',
-    back_to_archive: 'العودة إلى الأرشيف',
+    back_to_archive: ' العودة إلى الأرشيف >',
     grid_label: 'الشبكة',
     difficulty: {
       easy: 'سهل',

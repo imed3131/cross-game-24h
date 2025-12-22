@@ -251,14 +251,6 @@ const CompletionCelebration = ({
                 transition={{ delay: 0.8 }}
                 className="flex flex-col space-y-3"
               >
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={onPlayAgain}
-                  className="w-full"
-                >
-                  {loc('play_again')}
-                </Button>
                 
                 <Button
                   variant="ghost"
