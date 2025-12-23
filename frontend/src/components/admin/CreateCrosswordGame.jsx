@@ -194,10 +194,30 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
             throw new Error(`Invalid row at index ${rowIndex}: expected array, got ${typeof row}`);
           }
           return row.map((cell, colIndex) => {
-            console.log(`Converting cell [${rowIndex}][${colIndex}]: "${cell}" -> isBlocked: ${cell === '#'}, value: "${cell === '#' ? '' : cell}"`);
+            // Handle multiple possible backend formats:
+            // - string: '#' for blocked or a single-letter string for filled cell
+            // - object: { value: 'A', isBlocked: false }
+            let value = '';
+            let isBlocked = false;
+
+            if (typeof cell === 'string') {
+              isBlocked = cell === '#';
+              value = isBlocked ? '' : cell;
+            } else if (cell && typeof cell === 'object') {
+              isBlocked = !!cell.isBlocked || cell === '#';
+              value = isBlocked ? (cell.value ? '' : '') : (cell.value || '');
+            } else {
+              // unknown format - fallback to empty
+              console.warn(`Unexpected cell format at [${rowIndex}][${colIndex}]:`, cell);
+              value = '';
+              isBlocked = false;
+            }
+
+            console.log(`Converting cell [${rowIndex}][${colIndex}]:`, { raw: cell, isBlocked, value });
+
             return {
-              value: cell === '#' ? '' : cell,
-              isBlocked: cell === '#',
+              value,
+              isBlocked,
               isLocked: false,
               number: null,
               isHighlighted: false
@@ -798,15 +818,24 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
       // Déterminer si on crée ou on met à jour
       if (currentPuzzleId) {
         console.log('Updating existing puzzle with ID:', currentPuzzleId);
-        await api.put(`/admin/puzzle/${currentPuzzleId}`, puzzleData);
+        const res = await api.put(`/admin/puzzle/${currentPuzzleId}`, puzzleData);
+        // If backend returns updated puzzle info, sync any returned id
+        if (res && res.data && res.data.id) setCurrentPuzzleId(res.data.id);
         toast.success('Puzzle mis à jour avec succès!');
       } else {
         console.log('Creating new puzzle');
-        await api.post('/admin/create-puzzle', puzzleData);
+        const res = await api.post('/admin/create-puzzle', puzzleData);
+        // If the backend returns the created puzzle with an ID, use it so subsequent saves are updates
+        if (res && res.data && res.data.id) {
+          setCurrentPuzzleId(res.data.id);
+          console.debug('Created puzzle id set locally:', res.data.id);
+        }
         toast.success('Puzzle créé avec succès!');
       }
+
+      // NOTE: do not navigate away after save. Stay on the create/edit page and show a success message only.
+      // If the caller explicitly passed an onBack and expects navigation, they can still call it from UI.
       
-      if (onBack) onBack();
     } catch (error) {
       toast.error('Erreur lors de la sauvegarde');
       console.error('Error saving puzzle:', error);
@@ -1357,6 +1386,7 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
       {/* Action principale */}
       <div className="mt-8 flex justify-center">
         <button
+          type="button"
           onClick={savePuzzle}
           disabled={loading}
           className="flex items-center gap-2 px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-lg font-semibold"
