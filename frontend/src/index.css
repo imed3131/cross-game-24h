@@ -111,6 +111,45 @@
     box-sizing: border-box;
     flex: none;
   }
+
+  /* Player-scoped header and input tweaks */
+  /* Ensure header anchors are strictly square and their content scales */
+  .board-grid .clue-anchor {
+    aspect-ratio: 1 / 1; /* force square */
+    overflow: hidden;
+    flex-shrink: 0;
+    padding: 0.18rem !important; /* slightly reduce default padding for tight grids */
+  }
+  .board-grid .clue-anchor .col-number,
+  .board-grid .clue-anchor .row-number {
+    font-size: clamp(10px, 1.4vw, 14px);
+    font-weight: 700;
+    line-height: 1;
+    display: inline-block;
+    text-align: center;
+  }
+
+  /* Use a class-controlled input font-size so we can adjust on small screens specifically for the player grid */
+  .player-grid-force-ltr .crossword-cell input,
+  .player-grid-force-ltr .crossword-input {
+    font-size: clamp(12px, 2.4vw, 18px);
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+
+  /* Mobile-specific tightening to ensure letters fit into very small cells */
+  @media (max-width: 480px) {
+    .player-grid-force-ltr .crossword-cell input,
+    .player-grid-force-ltr .crossword-input {
+      font-size: clamp(10px, 4.6vw, 12px);
+    }
+    .board-grid .clue-anchor .col-number,
+    .board-grid .clue-anchor .row-number {
+      font-size: 11px;
+    }
+    /* allow smaller max cell size on tiny screens so the whole grid fits */
+    .board-grid { --cell-max: clamp(36px, 8vw, 48px); }
+  }
   
   .crossword-cell-black {
     background: #0f172a;

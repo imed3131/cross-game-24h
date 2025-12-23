@@ -201,7 +201,7 @@ const CrosswordCell = ({
         maxLength={1}
         className={`
           w-full h-full 
-          text-center font-bold text-lg sm:text-xl
+          text-center font-bold crossword-input
           bg-transparent border-0 outline-0
           ${cellNumber ? 'pt-1' : 'pt-0'}
           focus:ring-0 focus:outline-none

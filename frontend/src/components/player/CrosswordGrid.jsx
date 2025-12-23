@@ -698,7 +698,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
       transition={{ duration: 0.3 }}
     >
       <div className="mb-4">
-        <h3 className="text-base sm:text-lg font-bold text-center mb-1 sm:mb-2">{puzzle.title}</h3>
+        <h3 className="text-base  sm:text-lg font-bold text-center mb-1 sm:mb-2">{puzzle.title}</h3>
         <div className="text-xs sm:text-sm text-gray-600 text-center">
           <span>{loc('grid_label')} {numRows} × {numCols}</span>
           <span className="mr-2">| الصعوبة : </span>
@@ -706,7 +706,7 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
           <span className="mr-1">| اللغة : </span>
           <span className="ml-4 font-semibold">{puzzleLang === 'FR' ? loc('french') : puzzleLang === 'AR' ? loc('arabic') : puzzle.language}</span>
         </div>
-        <div className="text-lg sm:text-sm font-bold text-black-600 text-center  rounded max-auto">
+        <div className="text-sm sm:text-lg font-bold text-black-600 text-center  rounded max-auto">
           <div className='inline-block bg-yellow-100 p-2 rounded-md mt-2'>
           {isTouchDevice ? loc('touch_numbers_instruction') : loc('hover_numbers_instruction')}
           </div>
