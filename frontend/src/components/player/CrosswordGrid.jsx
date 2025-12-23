@@ -706,6 +706,11 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
           <span className="mr-1">| اللغة : </span>
           <span className="ml-4 font-semibold">{puzzleLang === 'FR' ? loc('french') : puzzleLang === 'AR' ? loc('arabic') : puzzle.language}</span>
         </div>
+        <div className="text-lg sm:text-sm font-bold text-black-600 text-center  rounded max-auto">
+          <div className='inline-block bg-yellow-100 p-2 rounded-md mt-2'>
+          {isTouchDevice ? loc('touch_numbers_instruction') : loc('hover_numbers_instruction')}
+          </div>
+        </div>
 
       </div>
         {/* Navigation Controls */}
