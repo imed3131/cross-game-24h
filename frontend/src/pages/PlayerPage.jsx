@@ -182,43 +182,45 @@ const PlayerPage = () => {
 
   return (
     <div className={`${topDirectionClass} min-h-screen relative overflow-hidden bg-gradient-to-br from-violet-900 via-blue-900 to-purple-900`} dir={lang === 'AR' ? 'rtl' : 'ltr'}>
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 pointer-events-none">
-        {/* Floating geometric shapes */}
-        <motion.div
-          animate={{
-            y: [0, -20, 0],
-            rotate: [0, 5, 0],
-          }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/4 left-1/4 w-32 h-32 bg-blue-400/10 rounded-3xl blur-sm"
-        ></motion.div>
-        
-        <motion.div
-          animate={{
-            y: [0, 30, 0],
-            rotate: [0, -10, 0],
-          }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute top-1/3 right-1/4 w-24 h-24 bg-purple-400/10 rounded-full blur-sm"
-        ></motion.div>
-        
-        <motion.div
-          animate={{
-            y: [0, -15, 0],
-            x: [0, 10, 0],
-          }}
-          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-1/4 left-1/3 w-40 h-40 bg-pink-400/10 rounded-2xl blur-sm"
-        ></motion.div>
+      {/* Decorative blur elements constrained to the content width */}
+      <div className="absolute inset-0 pointer-events-none flex items-start justify-center">
+        <div className="w-full max-w-6xl mx-auto relative pointer-events-none">
+          {/* Floating geometric shapes (positioned relative to the centered content area) */}
+          <motion.div
+            animate={{
+              y: [0, -20, 0],
+              rotate: [0, 5, 0],
+            }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -left-12 -top-6 w-32 h-32 bg-blue-400/10 rounded-3xl blur-sm"
+          ></motion.div>
+          
+          <motion.div
+            animate={{
+              y: [0, 30, 0],
+              rotate: [0, -10, 0],
+            }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+            className="absolute right-4 top-8 w-24 h-24 bg-purple-400/10 rounded-full blur-sm"
+          ></motion.div>
+          
+          <motion.div
+            animate={{
+              y: [0, -15, 0],
+              x: [0, 10, 0],
+            }}
+            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+            className="absolute left-1/2 transform -translate-x-1/2 bottom-8 w-40 h-40 bg-pink-400/10 rounded-2xl blur-sm"
+          ></motion.div>
 
-        {/* Grid pattern overlay */}
-        <div 
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }}
-        ></div>
+          {/* Grid pattern overlay (constrained to content width) */}
+          <div 
+            className="absolute inset-0 opacity-20 pointer-events-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+            }}
+          ></div>
+        </div>
       </div>
 
       <div className="relative z-10 min-h-screen">

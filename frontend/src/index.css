@@ -27,7 +27,9 @@
   /* Force LTR for the crossword player grid when necessary */
   .player-grid-force-ltr {
     direction: ltr !important;
-  }
+    width: 100%;            /* fill parent but do not overflow */
+    max-width: min(900px, 100%);    margin-left: auto;
+    margin-right: auto; /* center the board block inside its container */  }
   .player-grid-force-ltr input {
     direction: ltr !important;
     text-align: center !important;
@@ -37,8 +39,9 @@
     transform: none;
   }
   .grid-scroll-container {
-  overflow-x: auto;
-  overflow-y: visible;  /* ← Add this */
+  overflow-x: hidden; /* no horizontal scroll; grid will shrink to fit */
+  overflow-y: visible;
+  width: 100%;
 }
 }
 
@@ -86,15 +89,51 @@
     @apply input border-error-500 focus:ring-error-500;
   }
   
-  /* Crossword grid styles */
+  /* Unified board layout */
+  .board-grid { align-items: center; justify-items: stretch; width: 100%; --cell-max: clamp(44px, 3.6vw, 64px); }
+  .board-grid .clue-wrapper { display: block; }
+  .board-grid .clue-anchor { width: 100% !important; height: auto !important; aspect-ratio: 1 / 1; padding: 0.2rem !important; box-sizing: border-box; display:flex; align-items:center; justify-content:center; }
+
+  /* Crossword grid styles - responsive cells */
   .crossword-cell {
-    @apply w-8 h-8 md:w-10 md:h-10 border border-gray-400 flex items-center justify-center text-sm md:text-base font-semibold bg-white transition-all duration-200 relative;
+    /* fully flexible: width follows the grid track, no enforced minimum */
+    width: 100%;
+    aspect-ratio: 1 / 1; /* square cells */
+    border: 1px solid rgba(148,163,184,1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    background: #ffffff;
+    transition: all .15s;
+    font-size: clamp(12px, 1.2vw, 16px);
+    box-sizing: border-box;
+    box-sizing: border-box;
+    flex: none;
   }
   
   .crossword-cell-black {
-    @apply bg-gray-900 border-gray-900;
+    background: #0f172a;
+    border-color: #0f172a;
   }
-  
+
+  /* Ensure header anchors and blank corner follow column width and stay square */
+  .player-grid-force-ltr .clue-anchor {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1;
+    padding: 0.2rem !important;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .blank-corner {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1;
+  }  
   .crossword-cell-active {
     @apply bg-blue-100 border-blue-500 ring-2 ring-blue-300 ring-opacity-50;
   }

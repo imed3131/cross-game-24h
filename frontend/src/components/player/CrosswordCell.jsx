@@ -136,11 +136,7 @@ const CrosswordCell = ({
   if (isBlackCell) {
     return (
       <div 
-        className={`
-          w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12
-          bg-black border border-gray-300
-          ${className}
-        `}
+        className={`crossword-cell crossword-cell-black ${className}`}
       />
     );
   }
@@ -149,13 +145,7 @@ const CrosswordCell = ({
 
   return (
     <div 
-      className={`
-        relative w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12
-        border transition-all duration-150
-        ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}
-        ${isHovered ? 'bg-gray-50' : 'bg-white'}
-        ${className}
-      `}
+      className={`crossword-cell relative border transition-all duration-150 ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-300'} ${isHovered ? 'bg-gray-50' : 'bg-white'} ${className}`}
       /* Do not attach click on whole cell to avoid toggling clue when typing */
       onMouseEnter={() => onMouseEnter && onMouseEnter(row, col)}
       onMouseLeave={() => onMouseLeave && onMouseLeave()}
