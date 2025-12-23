@@ -9,6 +9,13 @@ import api from '../../services/api';
 
 const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
   const [gridSize, setGridSize] = useState({ rows: 15, cols: 15 });
+
+  // Add a body class while the create/edit screen is open so portal tooltips
+  // (which render into document.body) can be styled specifically for admin.
+  useEffect(() => {
+    document.body.classList.add('create-crossword-mode');
+    return () => document.body.classList.remove('create-crossword-mode');
+  }, []);
   const [grid, setGrid] = useState([]);
   const [clues, setClues] = useState({ across: {}, down: {} });
   const [numbering, setNumbering] = useState({});
@@ -505,34 +512,407 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
   }, [gridSize.rows, gridSize.cols]);
 
   // Small tooltip/popover for header clues (mirrors player's floating clue behavior)
-  const ClueTooltip = ({ clueId, clue, buttonRef, onClose }) => {
-    const elRef = useRef(null);
-    const [pos, setPos] = useState({ left: 0, top: 0, side: 'top' });
+  const ClueTooltip = ({ clueId, clue, buttonRef, onClose, small = false }) => {
+    const [pos, setPos] = useState({ x: 0, y: 0, side: 'top', arrowOffset: 0 });
+    const clueRef = useRef(null);
+    const posRef = useRef(null);
 
     useLayoutEffect(() => {
-      if (!buttonRef?.current || !elRef.current) return;
-      const anchor = buttonRef.current;
-      const tooltipEl = elRef.current;
-      tooltipEl.style.maxWidth = 'min(90vw, 420px)';
-      const anchorRect = anchor.getBoundingClientRect();
-      const tooltipRect = tooltipEl.getBoundingClientRect();
+      if (!clueRef.current || !buttonRef || !buttonRef.current) return;
 
-      const availableAbove = anchorRect.top;
-      const availableBelow = window.innerHeight - anchorRect.bottom;
+      const clueEl = clueRef.current;
 
-      let side = 'top';
-      if (availableAbove >= tooltipRect.height + 12) {
-        side = 'top';
-      } else if (availableBelow >= tooltipRect.height + 12) {
-        side = 'bottom';
-      } else {
-        side = availableAbove > availableBelow ? 'top' : 'bottom';
-      }
+      const compute = () => {
+        const anchor = buttonRef.current;
+        if (!anchor) return;
 
-      const left = Math.min(Math.max(8, anchorRect.left + anchorRect.width / 2 - tooltipRect.width / 2), window.innerWidth - tooltipRect.width - 8);
-      const top = side === 'top' ? (anchorRect.top - tooltipRect.height - 8) : (anchorRect.bottom + 8);
+        // Limit tooltip width so long clues wrap and we can measure reliably
+        clueEl.style.maxWidth = 'min(90vw, 520px)';
+        clueEl.style.boxSizing = 'border-box';
 
-      setPos({ left, top, side });
+        const anchorRect = anchor.getBoundingClientRect();
+        let clueRect = clueEl.getBoundingClientRect();
+
+        const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+
+        // Space available above / below the anchor
+        const availableAbove = anchorRect.top;
+        const availableBelow = window.innerHeight - anchorRect.bottom;
+
+        const margin = 12; // viewport margin
+        // Prefer showing above and attach to the anchor from the top
+        let side = 'top';
+
+        // If it fits fully above, keep it above
+        if (availableAbove >= clueRect.height + 16) {
+          side = 'top';
+        } else if (availableBelow >= clueRect.height + 16) {
+          side = 'bottom';
+        } else {
+          side = 'top';
+        }
+
+        // Determine maximum available vertical space on chosen side and clamp height
+        const availableSpace = side === 'top' ? Math.max(40, availableAbove - margin) : Math.max(40, availableBelow - margin);
+        const maxHeight = Math.max(80, Math.min(availableSpace, window.innerHeight - 40));
+
+        // Apply height constraint and allow scrolling if needed (scrollbars are visually hidden)
+        clueEl.style.maxHeight = `${maxHeight}px`;
+        clueEl.style.overflowY = 'auto';
+
+        // Re-measure after applying constraints
+        clueRect = clueEl.getBoundingClientRect();
+
+        // Calculate X (anchor-centric) and prefer staying near the anchor within maxShift
+        const halfWidth = clueRect.width / 2;
+        const minX = halfWidth + 8;
+        const maxX = Math.max(minX, window.innerWidth - halfWidth - 8);
+
+        const maxShift = 80; // px, adjust to taste
+        const desiredX = anchorCenterX;
+        const leftLimit = Math.max(minX, desiredX - maxShift);
+        const rightLimit = Math.min(maxX, desiredX + maxShift);
+
+        // Prefer to position tooltip centered over anchor, but clamp its left edge to the viewport so it never goes off-screen
+        let left = anchorCenterX - clueRect.width / 2;
+        const minLeft = 8;
+        const maxLeft = Math.max(minLeft, window.innerWidth - clueRect.width - 8);
+        left = Math.min(maxLeft, Math.max(minLeft, left));
+        let x = left + halfWidth;
+
+        // Calculate Y: attach to top of anchor when possible
+        let y;
+        if (side === 'top') {
+          // bottom edge of the tooltip should be 8px above anchor
+          let bottomY = anchorRect.top - 8;
+          // ensure tooltip top doesn't go beyond viewport; if it does and there's more space below, flip
+          const topEdge = bottomY - clueRect.height;
+          if (topEdge < 8) {
+            // try flipping if bottom has more room to show full tooltip
+            if (availableBelow >= clueRect.height + 16) {
+              side = 'bottom';
+              y = anchorRect.bottom + 8;
+            } else {
+              // keep it on top but clamp by reducing maxHeight (already applied) and position so top is at 8
+              bottomY = clueRect.height + 8;
+              y = bottomY;
+            }
+          } else {
+            y = bottomY;
+          }
+        } else {
+          // bottom
+          y = anchorRect.bottom + 8;
+        }
+
+        // Arrow offset inside the clue box — allow it to come closer to the edge for small anchors
+        let arrowOffset = anchorCenterX - (x - clueRect.width / 2);
+        const minOffset = 8; // allow arrow to be closer to edge for small header buttons
+        const maxOffset = Math.max(minOffset, clueRect.width - 8);
+        if (arrowOffset < minOffset) arrowOffset = minOffset;
+        if (arrowOffset > maxOffset) arrowOffset = maxOffset;
+
+        // Ensure tooltip stays within viewport horizontally (snap to edge if necessary)
+        left = Math.min(window.innerWidth - clueRect.width - 8, Math.max(8, anchorCenterX - clueRect.width / 2));
+        const xFinal = left + halfWidth;
+        // Recompute arrow offset after horizontal clamp
+        arrowOffset = anchorCenterX - (xFinal - clueRect.width / 2);
+        if (arrowOffset < minOffset) arrowOffset = minOffset;
+        if (arrowOffset > maxOffset) arrowOffset = maxOffset;
+
+        posRef.current = { left, x: xFinal, y, side, arrowOffset, maxHeight };
+        setPos(posRef.current);
+      };
+
+      // Lightweight scroll handler: only update vertical position and arrow offset to avoid horizontal jumps
+      const computeYOnly = () => {
+        const anchor = buttonRef.current;
+        if (!anchor || !clueRef.current) return;
+        const anchorRect = anchor.getBoundingClientRect();
+        const clueEl = clueRef.current;
+        let clueRect = clueEl.getBoundingClientRect();
+
+        const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+
+        // Recompute side preference but keep horizontal x fixed
+        const availableAbove = anchorRect.top;
+        const availableBelow = window.innerHeight - anchorRect.bottom;
+        let side = posRef.current && posRef.current.side ? posRef.current.side : 'top';
+
+        if (side === 'top') {
+          if (availableAbove >= clueRect.height + 16) {
+            side = 'top';
+          } else if (availableBelow >= clueRect.height + 16) {
+            side = 'bottom';
+          }
+        }
+
+        let y = side === 'top' ? anchorRect.top - 8 : anchorRect.bottom + 8;
+        if (side === 'top') {
+          const topEdge = y - clueRect.height;
+          if (topEdge < 8) {
+            if (availableBelow >= clueRect.height + 16) {
+              side = 'bottom';
+              y = anchorRect.bottom + 8;
+            } else {
+              y = clueRect.height + 8;
+            }
+          }
+        }
+
+        // Recompute arrow offset but keep horizontal left unchanged
+        const prevLeft = posRef.current ? posRef.current.left : (anchorCenterX - clueRect.width / 2);
+        let arrowOffset = anchorCenterX - prevLeft;
+        const minOffset = 8;
+        const maxOffset = Math.max(minOffset, clueRect.width - 8);
+        if (arrowOffset < minOffset) arrowOffset = minOffset;
+        if (arrowOffset > maxOffset) arrowOffset = maxOffset;
+
+        const newPos = { ...(posRef.current || {}), y, side, arrowOffset };
+        posRef.current = newPos;
+        setPos(newPos);
+      };
+
+      compute();
+      window.addEventListener('resize', compute);
+      window.addEventListener('scroll', computeYOnly, true);
+      return () => {
+        window.removeEventListener('resize', compute);
+        window.removeEventListener('scroll', computeYOnly, true);
+      };
+    }, [clueId]);
+
+    // Nothing server-side
+    if (typeof document === 'undefined') return null;
+
+    const arrowClassMap = { top: 'arrow-down', bottom: 'arrow-up', left: 'arrow-right', right: 'arrow-left' };
+    const arrowClass = arrowClassMap[pos.side] || 'arrow-down';
+    const clueNumber = clueId.startsWith('col-') ? clueId.split('-')[1] : clueId.split('-')[1];
+    // Normalize language codes (accept FR, fr, french, العربية, arabic, etc.)
+    const normalizeLang = (l) => {
+      if (!l) return '';
+      const s = String(l).trim();
+      const up = s.toUpperCase();
+      if (up === 'FR' || up.startsWith('F') || up === 'FRENCH' || up === 'FRANCAIS' || up === 'FRANÇAIS') return 'FR';
+      if (up === 'AR' || up.startsWith('A') || up === 'ARABIC' || s === 'العربية') return 'AR';
+      return up;
+    };
+    const clueLang = normalizeLang(language);
+
+    return createPortal(
+      <div
+        ref={clueRef}
+        className={`floating-clue ${arrowClass} ${clueLang === 'AR' ? 'rtl' : ''}`}
+        dir={clueLang === 'AR' ? 'rtl' : 'ltr'}
+        data-visible="true"
+        style={{
+          position: 'fixed',
+          left: `${pos.left}px`,
+          top: `${pos.y}px`,
+          transform: pos.side === 'top' ? 'translateY(-100%)' : 'translateY(0)',
+          zIndex: 9999,
+          maxWidth: 'min(90vw, 520px)',
+          maxHeight: pos.maxHeight ? `${pos.maxHeight}px` : undefined,
+          overflowY: 'auto',
+          '--arrow-left': pos.side === 'top' || pos.side === 'bottom' ? `${pos.arrowOffset}px` : undefined,
+          '--arrow-top': pos.side === 'left' || pos.side === 'right' ? `${pos.arrowOffset}px` : undefined,
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onMouseEnter={(e) => e.stopPropagation()}
+        onMouseLeave={(e) => e.stopPropagation()}
+        onMouseOver={(e) => e.stopPropagation()}
+        onFocus={(e) => e.stopPropagation()}
+        onBlur={(e) => e.stopPropagation()}
+      >
+        <button
+          className="clue-close"
+          onClick={onClose}
+          aria-label={language === 'arabic' ? 'إغلاق' : 'Fermer'}
+          title={language === 'arabic' ? 'إغلاق' : 'Fermer'}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+          </svg>
+        </button>
+        <div>
+          <div className="clue-badge">{language === 'arabic' ? 'تعريف' : 'Indice'} {clueNumber}</div>
+          <div className={`clue-body ${clueLang === 'AR' ? 'font-arabic' : ''}`} style={ small ? { fontSize: '15px', lineHeight: 1.35 } : undefined }>{clue}</div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  // Small persistent clue for clicks (compact, 16px text) — appears on click/toggle only
+  const SmallClue = ({ clueId, clue, buttonRef, onClose }) => {
+    const elRef = useRef(null);
+    const [pos, setPos] = useState({ left: 0, top: 0, side: 'top', arrowOffset: 0, maxHeight: null });
+    const posRef = useRef(null);
+
+    useLayoutEffect(() => {
+      if (!elRef.current || !buttonRef || !buttonRef.current) return; // ensure both anchor & clue exist
+      const clueEl = elRef.current;
+
+      const compute = () => {
+        const anchor = buttonRef.current;
+        if (!anchor || !clueEl) return;
+
+        // Limit tooltip width so long clues wrap and we can measure reliably
+        clueEl.style.maxWidth = 'min(90vw, 380px)';
+        clueEl.style.boxSizing = 'border-box';
+
+        const anchorRect = anchor.getBoundingClientRect();
+        let clueRect = clueEl.getBoundingClientRect();
+
+        const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+
+        // Space available above / below the anchor
+        const availableAbove = anchorRect.top;
+        const availableBelow = window.innerHeight - anchorRect.bottom;
+
+        const margin = 8; // viewport margin
+        // Prefer showing above and attach to the anchor from the top
+        let side = 'top';
+
+        // If it fits fully above, keep it above
+        if (availableAbove >= clueRect.height + 16) {
+          side = 'top';
+        } else if (availableBelow >= clueRect.height + 16) {
+          // If it doesn't fit above but fits below, use bottom
+          side = 'bottom';
+        } else {
+          // If neither side fits fully, prefer top but clamp height to available space
+          side = 'top';
+        }
+
+        // Determine maximum available vertical space on chosen side and clamp height
+        const availableSpace = side === 'top' ? Math.max(40, availableAbove - margin) : Math.max(40, availableBelow - margin);
+        const maxHeight = Math.max(80, Math.min(availableSpace, window.innerHeight - 40));
+
+        // Apply height constraint and allow scrolling if needed (scrollbars are visually hidden)
+        clueEl.style.maxHeight = `${maxHeight}px`;
+        clueEl.style.overflowY = 'auto';
+
+        // Re-measure after applying constraints
+        clueRect = clueEl.getBoundingClientRect();
+
+        // Calculate X (anchor-centric) and prefer staying near the anchor within maxShift
+        const halfWidth = clueRect.width / 2;
+        const minX = halfWidth + 8;
+        const maxX = Math.max(minX, window.innerWidth - halfWidth - 8);
+
+        const maxShift = 80; // px, adjust to taste
+        const desiredX = anchorCenterX;
+        const leftLimit = Math.max(minX, desiredX - maxShift);
+        const rightLimit = Math.min(maxX, desiredX + maxShift);
+
+        // Prefer to position tooltip centered over anchor, but clamp its left edge to the viewport so it never goes off-screen
+        let left = anchorCenterX - clueRect.width / 2;
+        const minLeft = 8;
+        const maxLeft = Math.max(minLeft, window.innerWidth - clueRect.width - 8);
+        left = Math.min(maxLeft, Math.max(minLeft, left));
+        let x = left + halfWidth;
+
+        // Calculate Y: attach to top of anchor when possible
+        let y;
+        if (side === 'top') {
+          // bottom edge of the tooltip should be 8px above anchor
+          let bottomY = anchorRect.top - 8;
+          // ensure tooltip top doesn't go beyond viewport; if it does and there's more space below, flip
+          const topEdge = bottomY - clueRect.height;
+          if (topEdge < 8) {
+            // try flipping if bottom has more room to show full tooltip
+            if (availableBelow >= clueRect.height + 16) {
+              side = 'bottom';
+              y = anchorRect.bottom + 8;
+            } else {
+              // keep it on top but clamp by reducing maxHeight (already applied) and position so top is at 8
+              bottomY = clueRect.height + 8;
+              y = bottomY;
+            }
+          } else {
+            y = bottomY;
+          }
+        } else {
+          // bottom
+          y = anchorRect.bottom + 8;
+        }
+
+        // Arrow offset inside the clue box — allow it to come closer to the edge for small anchors
+        let arrowOffset = anchorCenterX - (x - clueRect.width / 2);
+        const minOffset = 8; // allow arrow to be closer to edge for small header buttons
+        const maxOffset = Math.max(minOffset, clueRect.width - 8);
+        if (arrowOffset < minOffset) arrowOffset = minOffset;
+        if (arrowOffset > maxOffset) arrowOffset = maxOffset;
+
+        // Ensure tooltip stays within viewport horizontally (snap to edge if necessary)
+        left = Math.min(window.innerWidth - clueRect.width - 8, Math.max(8, anchorCenterX - clueRect.width / 2));
+        const xFinal = left + halfWidth;
+        // Recompute arrow offset after horizontal clamp
+        arrowOffset = anchorCenterX - (xFinal - clueRect.width / 2);
+        if (arrowOffset < minOffset) arrowOffset = minOffset;
+        if (arrowOffset > maxOffset) arrowOffset = maxOffset;
+
+        const newPos = { left, x: xFinal, y, side, arrowOffset, maxHeight };
+        posRef.current = newPos;
+        setPos(newPos);
+      };
+
+      const computeYOnly = () => {
+        const anchor = buttonRef.current;
+        if (!anchor || !elRef.current) return;
+        const anchorRect = anchor.getBoundingClientRect();
+        const clueEl = elRef.current;
+        let clueRect = clueEl.getBoundingClientRect();
+
+        const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+
+        // Recompute side preference but keep horizontal x fixed
+        const availableAbove = anchorRect.top;
+        const availableBelow = window.innerHeight - anchorRect.bottom;
+        let side = posRef.current && posRef.current.side ? posRef.current.side : 'top';
+
+        if (side === 'top') {
+          if (availableAbove >= clueRect.height + 16) {
+            side = 'top';
+          } else if (availableBelow >= clueRect.height + 16) {
+            side = 'bottom';
+          }
+        }
+
+        let y = side === 'top' ? anchorRect.top - 8 : anchorRect.bottom + 8;
+        if (side === 'top') {
+          const topEdge = y - clueRect.height;
+          if (topEdge < 8) {
+            if (availableBelow >= clueRect.height + 16) {
+              side = 'bottom';
+              y = anchorRect.bottom + 8;
+            } else {
+              y = clueRect.height + 8;
+            }
+          }
+        }
+
+        // Recompute arrow offset but keep horizontal left unchanged
+        const prevLeft = posRef.current ? posRef.current.left : (anchorCenterX - clueRect.width / 2);
+        let arrowOffset = anchorCenterX - prevLeft;
+        const minOffset = 8;
+        const maxOffset = Math.max(minOffset, clueRect.width - 8);
+        if (arrowOffset < minOffset) arrowOffset = minOffset;
+        if (arrowOffset > maxOffset) arrowOffset = maxOffset;
+
+        const newPos = { ...(posRef.current || {}), y, side, arrowOffset };
+        posRef.current = newPos;
+        setPos(newPos);
+      };
+
+      compute();
+      window.addEventListener('resize', compute);
+      window.addEventListener('scroll', computeYOnly, true);
+      return () => {
+        window.removeEventListener('resize', compute);
+        window.removeEventListener('scroll', computeYOnly, true);
+      };
     }, [buttonRef, clue]);
 
     if (typeof document === 'undefined') return null;
@@ -540,13 +920,36 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
     const clueNumber = clueId?.split('-')?.[1] || '';
 
     return createPortal(
-      <div ref={elRef} className={`floating-clue ${pos.side === 'top' ? 'arrow-down' : 'arrow-up'}`} style={{ position: 'fixed', left: `${pos.left}px`, top: `${pos.top}px`, zIndex: 9999 }} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={elRef}
+        className={`floating-clue small-clue ${pos.side === 'top' ? 'arrow-down' : 'arrow-up'} ${language === 'arabic' ? 'rtl admin-rtl' : ''}`}
+        dir={language === 'arabic' ? 'rtl' : 'ltr'}
+        data-visible="true"
+        style={{
+          position: 'fixed',
+          left: `${pos.left}px`,
+          top: `${pos.top}px`,
+          transform: pos.side === 'top' ? 'translateY(-100%)' : 'translateY(0)',
+          zIndex: 9999,
+          maxWidth: 'min(90vw, 380px)',
+          maxHeight: pos.maxHeight ? `${pos.maxHeight}px` : undefined,
+          overflowY: 'auto',
+          '--arrow-left': pos.side === 'top' || pos.side === 'bottom' ? `${pos.arrowOffset}px` : undefined,
+          '--arrow-top': pos.side === 'left' || pos.side === 'right' ? `${pos.arrowOffset}px` : undefined,
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onMouseEnter={(e) => e.stopPropagation()}
+        onMouseLeave={(e) => e.stopPropagation()}
+        onMouseOver={(e) => e.stopPropagation()}
+        onFocus={(e) => e.stopPropagation()}
+        onBlur={(e) => e.stopPropagation()}
+      >
         <button className="clue-close" onClick={onClose} aria-label={language === 'arabic' ? 'إغلاق' : 'Fermer'} title={language === 'arabic' ? 'إغلاق' : 'Fermer'}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18" /><path d="M6 6l12 12" /></svg>
         </button>
         <div>
           <div className="clue-badge">{language === 'arabic' ? 'تعريف' : 'Indice'} {clueNumber}</div>
-          <div className={`clue-body ${language === 'arabic' ? 'font-arabic' : ''}`}>{clue}</div>
+          <div className={`clue-body ${language === 'arabic' ? 'font-arabic' : ''}`} style={{ fontSize: '16px', lineHeight: 1.35 }}>{clue}</div>
         </div>
       </div>,
       document.body
@@ -908,8 +1311,8 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
                 handleCellClick(row, col);
               }
             }}
-            className="w-full h-full text-center border-none outline-none bg-transparent text-2xl font-extrabold focus:ring-2 focus:ring-blue-500 hover:bg-blue-50"
-            style={{ ...getTextStyleForLanguage(), fontSize: language === 'arabic' ? '24px' : '28px' }}
+            className="w-full h-full text-center border-none outline-none bg-transparent text-4xl font-extrabold focus:ring-2 focus:ring-blue-500 hover:bg-blue-50"
+            style={{ ...getTextStyleForLanguage(), fontSize: language === 'arabic' ? '30px' : '34px' }}
             maxLength="1"
             placeholder=""
             data-row={row}
@@ -1103,18 +1506,18 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
                           onMouseEnter={() => hasClue && openClueHover(clueId)}
                           onMouseLeave={() => hasClue && closeClueHover()}
                           onClick={() => hasClue && openClueUser(clueId)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { hasClue && openClueUser(clueId); } if (e.key === 'Escape') { closeClueUser({ force: true }); } }}
-                          title={clues.down[index + 1] ? clues.down[index + 1] : (language === 'arabic' ? 'لا يوجد تعريف' : "Pas d'indice")}>
+                          onKeyDown={(e) => { if (e.key === 'Enter') { hasClue && openClueUser(clueId); } if (e.key === 'Escape') { closeClueUser({ force: true }); } }}>
                             <span>{index + 1}</span>
 
-                          {isActive && hasClue && (
+                          {hasClue && ((isActive || persistentClueId === clueId) && (
                             <ClueTooltip
                               clueId={clueId}
                               clue={clues.down[index + 1]}
                               buttonRef={{ current: anchorRefs.current[clueId] }}
                               onClose={() => { if (persistentClueId === clueId) closeClueUser({ force: true }); else closeClueHover(); }}
+                              small={persistentClueId === clueId}
                             />
-                          )}
+                          ))}
                         </div>
                       );
                     })}
@@ -1149,18 +1552,18 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
                                 onMouseEnter={() => hasClue && openClueHover(clueId)}
                                 onMouseLeave={() => hasClue && closeClueHover()}
                                 onClick={() => hasClue && openClueUser(clueId)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') { hasClue && openClueUser(clueId); } if (e.key === 'Escape') { closeClueUser({ force: true }); } }}
-                                title={clues.across[index + 1] ? clues.across[index + 1] : (language === 'arabic' ? 'لا يوجد تعريف' : "Pas d'indice")}>
+                                onKeyDown={(e) => { if (e.key === 'Enter') { hasClue && openClueUser(clueId); } if (e.key === 'Escape') { closeClueUser({ force: true }); } }}>
                                 <span>{index + 1}</span>
 
-                                {isActive && hasClue && (
+                                {hasClue && ((isActive || persistentClueId === clueId) && (
                                   <ClueTooltip
                                     clueId={clueId}
                                     clue={clues.across[index + 1]}
                                     buttonRef={{ current: anchorRefs.current[clueId] }}
                                     onClose={() => { if (persistentClueId === clueId) closeClueUser({ force: true }); else closeClueHover(); }}
+                                    small={persistentClueId === clueId}
                                   />
-                                )}
+                                ))}
                               </div>
                             );
                           })}
@@ -1181,18 +1584,18 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
                                 onMouseEnter={() => hasClue && openClueHover(clueId)}
                                 onMouseLeave={() => hasClue && closeClueHover()}
                                 onClick={() => hasClue && openClueUser(clueId)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') { hasClue && openClueUser(clueId); } if (e.key === 'Escape') { closeClueUser({ force: true }); } }}
-                                title={clues.across[index + 1] ? clues.across[index + 1] : (language === 'arabic' ? 'لا يوجد تعريف' : "Pas d'indice")}> 
+                                onKeyDown={(e) => { if (e.key === 'Enter') { hasClue && openClueUser(clueId); } if (e.key === 'Escape') { closeClueUser({ force: true }); } }}>
                                 <span>{index + 1}</span>
 
-                                {isActive && hasClue && (
+                                {hasClue && ((isActive || persistentClueId === clueId) && (
                                   <ClueTooltip
                                     clueId={clueId}
                                     clue={clues.across[index + 1]}
                                     buttonRef={{ current: anchorRefs.current[clueId] }}
                                     onClose={() => { if (persistentClueId === clueId) closeClueUser({ force: true }); else closeClueHover(); }}
+                                    small={persistentClueId === clueId}
                                   />
-                                )}
+                                ))}
                               </div>
                             );
                           })}
@@ -1342,7 +1745,7 @@ const CreateCrosswordGame = ({ onBack, editPuzzleId }) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-7xl mx-auto p-4"
+      className="max-w-7xl mx-auto p-4 create-crossword"
     >
       {/* En-tête */}
       <div className="mb-6">

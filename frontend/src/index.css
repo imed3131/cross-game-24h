@@ -249,6 +249,62 @@
     font-size: 15px;
   }
 
+  /* Larger admin clues when editing/creating puzzles (also applies to portal tooltips via body class) */
+  .create-crossword .floating-clue .clue-body,
+  body.create-crossword-mode .floating-clue .clue-body {
+    font-size: 34px !important; /* much bigger for clear visibility */
+    line-height: 1.55 !important;
+    font-weight: 700 !important;
+  }
+
+  /* For admin hover-only floating clues (not the small click-persistent ones), use a larger size for easier reading */
+  body.create-crossword-mode .floating-clue:not(.small-clue) .clue-body {
+    font-size: 20px !important;
+    line-height: 1.5 !important;
+    font-weight: 600 !important;
+  }
+
+  /* Small persistent clues used by admin on CLICK (compact, readable at 16px) */
+  .small-clue {
+    position: absolute;
+    background: #ffffff;
+    color: #0f172a;
+    padding: 8px 10px;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(2,6,23,0.10);
+    border: 1px solid rgba(15,23,42,0.06);
+    max-width: 380px;
+    font-size: 16px !important;
+    z-index: 9999;
+    transition: opacity 140ms ease, transform 160ms cubic-bezier(.2,.9,.3,1);
+    opacity: 0;
+  }
+  .small-clue[data-visible="true"] { opacity: 1; }
+  .small-clue .clue-body { font-size: 20px !important; line-height: 1.4; }
+
+  /* In admin mode, prefer larger cells (helps visibility for creators) */
+  body.create-crossword-mode .board-grid { --cell-max: clamp(56px, 4vw, 80px); }
+  .create-crossword .floating-clue .clue-badge,
+  body.create-crossword-mode .floating-clue .clue-badge {
+    font-size: 20px !important;
+    padding: 12px 16px !important;
+  }
+  /* Tooltip container larger on desktop so the much larger text fits comfortably */
+  @media (min-width: 768px) {
+    .create-crossword .floating-clue,
+    body.create-crossword-mode .floating-clue {
+      max-width: 640px !important;
+      padding: 18px 26px !important;
+    }
+  }
+  /* Slightly increase on small screens too so it remains readable */
+  @media (max-width: 767px) {
+    .create-crossword .floating-clue,
+    body.create-crossword-mode .floating-clue {
+      font-size: 22px; /* ensures readability on mobile */
+    }
+  }
+
   .floating-clue .clue-close {
     position: absolute;
     top: 6px;
