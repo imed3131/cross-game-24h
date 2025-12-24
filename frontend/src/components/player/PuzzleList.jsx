@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useGameState } from '../../context/GameState';
 import { t } from '../../i18n';
+import CrosswordPreview from './CrosswordPreview';
 
 const PuzzleList = ({
   puzzles = [],
@@ -33,7 +34,7 @@ const PuzzleList = ({
       const response = await fetchAllPuzzles({
         language: language || undefined,
         page,
-        limit: 10
+        limit: 12
       });
       
       setLocalPuzzles(response.data.puzzles || []);
@@ -107,24 +108,29 @@ const PuzzleList = ({
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(loading || localLoading) ? (
-          <div className="p-6 text-center text-sm text-white/70">
+          <div className="p-6 text-center text-sm text-white/70 col-span-full">
             {loc('loading_puzzles')}
           </div>
         ) : (
           (localPuzzles && localPuzzles.length > 0) ? (
             localPuzzles.map(p => (
-              <div key={p.id} className="p-3 bg-white/5 rounded-lg flex items-center justify-between mb-2 hover:bg-white/10 transition-colors">
-                <div>
-                  <div className="text-sm font-semibold text-white">{p.title || loc('puzzle')}</div>
-                  <div className="text-xs text-white/70">{new Date(p.date).toLocaleDateString(siteLang === 'AR' ? 'ar' : 'fr-FR')} · {p.rows}×{p.cols} · {loc(`difficulty.${p.difficulty === 'easy' ? 'easy' : p.difficulty === 'medium' ? 'medium' : 'hard'}`)}</div>
-                  <div className="text-xs font-bold text-yellow-400 uppercase">{normalizeLangCode(p.language) === 'AR' ? loc('arabic') : normalizeLangCode(p.language) === 'FR' ? loc('french') : p.language}</div>
+              <div key={p.id} className="p-3 bg-white/5 rounded-lg flex flex-col items-center justify-between min-h-[360px] hover:bg-white/10 transition-colors">
+                <div className="flex flex-col items-center w-full">
+                  <CrosswordPreview grid={p.grid} rows={p.rows} cols={p.cols} maxSize={180} />
+
+                  <div className="mt-2 text-center px-2 w-full">
+                    <div className="text-sm font-semibold text-white">{p.title || loc('puzzle')}</div>
+                    <div className="text-xs text-white/70 mt-1" style={{ maxHeight: '5.5rem', overflow: 'hidden' }}>{p.description || p.preview || ''}</div>
+                    <div className="text-xs font-bold text-yellow-400 uppercase mt-2">{normalizeLangCode(p.language) === 'AR' ? loc('arabic') : normalizeLangCode(p.language) === 'FR' ? loc('french') : p.language}</div>
+                    <div className="text-xs text-white/70 mt-1">{new Date(p.date).toLocaleDateString(siteLang === 'AR' ? 'ar' : 'fr-FR')} · {p.rows}×{p.cols}</div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mt-3 self-center">
                   <button
                     onClick={() => onSelectPuzzle?.(p)}
-                    className="px-3 py-1 bg-yellow-400 text-black rounded-md text-sm hover:bg-yellow-500 transition-colors font-medium"
+                    className="px-4 py-2 bg-yellow-400 text-black rounded-md text-sm hover:bg-yellow-500 transition-colors font-medium"
                   >
                     {loc('open')}
                   </button>
@@ -132,7 +138,7 @@ const PuzzleList = ({
               </div>
             ))
           ) : (
-            <div className="p-6 text-center text-sm text-white/70">
+            <div className="p-6 text-center text-sm text-white/70 col-span-full">
               {hasLoaded ? loc('no_puzzle') + '.' : loc('loading')}
             </div>
           )

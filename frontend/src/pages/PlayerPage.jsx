@@ -241,7 +241,7 @@ const PlayerPage = () => {
             </motion.div>
             
             <motion.h1 
-              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-7xl font-bold mb-3 sm:mb-4 lg:mb-6 relative px-2"
+              className="text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-7xl font-bold mb-3 sm:mb-4 lg:mb-6 relative px-2"
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.8, ease: "backOut" }}
@@ -249,14 +249,6 @@ const PlayerPage = () => {
               <span className="bg-gradient-to-r from-yellow-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
                 {loc('site_title')}
               </span>
-              
-              {/* Animated underline */}
-              <motion.div
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ delay: 0.8, duration: 0.8 }}
-                className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gradient-to-r from-yellow-400 to-pink-400 rounded-full"
-              ></motion.div>
             </motion.h1>
             
             <motion.p 
