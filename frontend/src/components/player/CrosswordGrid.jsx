@@ -49,13 +49,15 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
     closeClueUser
   } = useClue();
 
+  const puzzleLang = normalizeLang(puzzle && puzzle.language ? puzzle.language : language);
+
   const gridRef = useRef(null);
   const scrollRef = useRef(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [cellRefs, setCellRefs] = useState({});
   const anchorRefs = useRef({});
   const [hoveredCell, setHoveredCell] = useState({ row: -1, col: -1 });
-  const [preferredDirection, setPreferredDirection] = useState('right');
+  const [preferredDirection, setPreferredDirection] = useState(puzzleLang === 'AR' ? 'left' : 'right');
   const lastCloseRef = useRef(0);
   const lastKeypressRef = useRef(0);
   // Detect touch / mobile environment (used to switch hover -> tap behaviour)
@@ -686,7 +688,6 @@ const CrosswordGrid = ({ puzzle, onCellSelect, onWordSelect, resetGame: external
   }, [canOpenClueOnHover, openClueHover]);
 
   // Normalized puzzle language for header and UI
-  const puzzleLang = normalizeLang(puzzle && puzzle.language ? puzzle.language : language);
 
   return (
     <motion.div
